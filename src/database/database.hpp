@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include "auth/user.hpp"
 
 // Global
 #define DATABASE_ATTR_SEPARATOR '|'
@@ -14,6 +15,12 @@ extern void InitializeDatabase();
 extern std::vector<std::string> 
 ReadAttributes(std::string_view content, size_t &i);
 
-extern void LoadUsers();
+extern std::vector<sUser> gUsers;
 
-//void MatchUsers(const sUser *filter, std::vector<sUser>);
+extern void LoadUsers();
+extern void AddUser(const sUser& user);
+extern void MatchUsers(const sUser& filter);
+
+extern void CommitChanges();
+// Parsing functions
+extern std::string Parse(const sUser& user);

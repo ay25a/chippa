@@ -10,10 +10,11 @@ struct sANSIFormatter {
   // Font style
   const char *BOLD = "";
   const char *UNDERLINE = "";
-  const char *INVISIBLE = "";
-
+  
   // Colors
-  const char *RED_BACKGROUND;
+  const char *RED_BACKGROUND = "";
+  const char *WHITE_BACKGROUND = "";
+  const char *WHITE_FOREGROUND = "";
 };
 
 extern const sANSIFormatter gFORMATTER_ENABLED;

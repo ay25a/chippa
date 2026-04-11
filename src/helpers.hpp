@@ -1,8 +1,6 @@
 #pragma once
 
-#include <string>
+#include <string_view>
 
-// Platform-Dependent
-extern std::string GetExecutablePath();
-extern bool CreateDirectory(std::string_view path);
-char GetChar();
+extern std::string ReadFile(std::string_view path);
+extern void WriteFile(std::string_view path, std::string_view content);

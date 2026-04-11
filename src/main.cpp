@@ -1,18 +1,21 @@
-#include "terminal/cli.hpp"
-
-void LoginUser();
-void Authenticate() {
-  cli_clear();
-  cli_header("Authentication");
-  auto choice = cli_menu({"Login", "Register", "Exit"});
-}
+#include "auth/auth.hpp"
+#include "database/database.hpp"
 
 int main(int argc, char **argv) {
   // Choice to enable/disable formatter
   // Choice to enable/disable interactive tui (to be implemented)
-  //Authenticate();
-  
-  Authenticate();
+  InitializeDatabase();
+  LoadUsers();
+
+  while(!gCurrentUser) 
+    Authenticate();
+
+  if(gCurrentUser->Role == eUserRole::Student){
+    // Show student menu
+  }
+  else{
+    // show staff menu
+  }
   return 0;
 }
 

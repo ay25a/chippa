@@ -8,57 +8,34 @@
 
 using std::cout;
 
-// clang-format off
+// Enabled formatter: clears terminal with `sANSIFormatter::CLEAR_TERMINAL`
+//
+// Disabled formatter: clears terminal with platform-dependent command
+extern void cli_clear();
 
-// Output only
-
-
-inline void cli_clear() {
-  cout << gFmt->CLEAR_TERMINAL;
-}
-
+// Text with spacing (bold and underlined if formatter enabled)
 inline void cli_header(const char *text) {
-  cout << gFmt->BOLD << gFmt->UNDERLINE << text << gFmt->RESET << "\n\n";
+  cout << "\n" << gFmt->BOLD << gFmt->UNDERLINE << text << gFmt->RESET << "\n\n";
 }
 
-inline void cli_separator(char ch, size_t length){
+// Text with spaces (bold if formatted)
+inline void cli_subheader(const char *text){
+  cout << "\n" << gFmt->BOLD << text << gFmt->RESET << "\n";
+}
+
+inline void cli_separator(size_t length, char ch = '=') {
   cout << std::string(length, ch) << '\n';
 }
 
+// Text with '[Error]' prefix (bold and red background if formatter enabled)
 inline void cli_error(const char *text) {
-  cout << gFmt->RED_BACKGROUND << gFmt->BOLD << text << gFmt->RESET << '\n';
+  cout << gFmt->RED_BACKGROUND << gFmt->BOLD << "[Error] "<< text << gFmt->RESET << '\n';
 }
 
-// Input related
+// Gets input using `std::getline`, 
+// `obscure` enables rendering a white background if formatter enabled (not very secure but portable) 
+extern void cli_input(const char *prompt, std::string &val, bool obsecure = false);
 
-inline void cli_input(const char *prompt, std::string &val, bool obsecure = false) {
-  std::cout << gFmt->BOLD << prompt << gFmt->RESET;
-  if (obsecure)
-    std::cout << gFmt->INVISIBLE;
-
-  std::cin >> val;
-
-  if (obsecure)
-    std::cout << gFmt->RESET;
-}
-
-static uint32_t cli_menu(const std::vector<std::string> &items) {
-  for (size_t i = 0; i < items.size(); ++i)
-    std::cout << "(" << i << ") " << items[i] << "\n";
-
-  cli_separator('=', 10);
-  int choice = -1;
-  while (true) {
-    std::cout << "(0 - " << items.size() - 1 << ") > ";
-    std::cin >> choice;
-
-    if (choice < 0 || choice >= items.size()) {
-      cli_error("Invalid choice!");
-      continue;
-    }
-
-    break;
-  }
-
-  return choice;
-}
+// Shows a menu with input for selectable items
+// returns a valid choice input from user
+extern uint32_t cli_menu(const std::vector<std::string> &items);
