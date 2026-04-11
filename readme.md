@@ -9,3 +9,5 @@ To build the project, run the command palette again and select (or write) "CMake
 To run the project, run the command palette again and select (or write) "CMake: Run without debugging". This will run the executable created in the build folder.
 
 To debug the project, run the command palette again and select (or write) "CMake: Debug". This will run the executable created in the build folder with debugging enabled.
+
+### Note: Storage will be located inside the `build` folder after running the program
