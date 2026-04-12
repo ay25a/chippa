@@ -1,31 +1,35 @@
 #include "cli.hpp"
-#include "platform/common.hpp"
+#include <cstring>
 
 void cli_clear(){  
-  if(!gFmt->isEnabled) SYSTEM_CLEAR_TERMINAL();
-  else cout << gFmt->CLEAR_TERMINAL;
+  if(strcmp(gFmt.CLEAR_TERMINAL, "")){
+#ifdef _WIN32
+    system("cls");
+#else
+  system("clear");
+#endif
+  }
+
+  else std::cout << gFmt.CLEAR_TERMINAL;
 }
 
-void cli_input(const char *prompt, std::string &val, bool obsecure){
-  cout << gFmt->BOLD << prompt << gFmt->RESET;
-  if (obsecure)
-    cout << gFmt->WHITE_BACKGROUND;
-
+void cli_input(std::string_view prompt, std::string &val, bool obsecure){
+  std::cout << gFmt.BOLD << prompt << gFmt.RESET;
+  
+  if (obsecure) std::cout << gFmt.WHITE_BACKGROUND;
   std::getline(std::cin, val);
-
-  if (obsecure)
-    cout << gFmt->RESET;
+  if (obsecure) std::cout << gFmt.RESET;
 }
 
 uint32_t cli_menu(const std::vector<std::string> &items) {
   for (size_t i = 0; i < items.size(); ++i)
-    cout << "(" << i << ") " << items[i] << "\n";
+    std::cout << "(" << i << ") " << items[i] << "\n";
 
   cli_separator(10);
 
   std::string input;
   while (true) {
-    cout << "(0 - " << items.size() - 1 << ") > ";
+    std::cout << "(0 - " << items.size() - 1 << ") > ";
     std::getline(std::cin, input);
 
     try {
@@ -36,4 +40,15 @@ uint32_t cli_menu(const std::vector<std::string> &items) {
       return choice;
     }catch(const std::exception& e) { cli_error("Invalid choice!"); }
   }
+}
+
+bool cli_bool(const std::string& prompt, bool def){
+  std::string str;
+  cli_input(prompt + " (y/n) ", str);
+  if(str == "y") 
+    return true;
+  else if(str == "n") 
+    return false;
+
+  return def;
 }

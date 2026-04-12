@@ -1,8 +1,6 @@
-#include "auth.hpp"
-#include "database/database.hpp"
+#include "common.hpp"
 #include "terminal/cli.hpp"
-
-sUser* gCurrentUser = nullptr;
+#include "database/user.hpp"
 
 void Authenticate() {
   cli_clear();
@@ -33,11 +31,15 @@ void Login(){
     cli_input("Password: ", password, true);
 
     // Match
+    auto found = MatchUsers(sUser("", email, password), true);
+    if(found.size() != 0) {
+      gCurrentUser = found[0];
+      break;
+    }
     
-    std::string again;
-    cli_input("Try again? (y, n) ", again);
-
-    if(again == "n") 
+    cli_error("Wrong email or password!");
+    
+    if(!cli_bool("Try again? "))
       break;
   }
 }
@@ -65,6 +67,6 @@ void Register(){
   choice = cli_menu({"Student", "Staff"});
   newUser.Role = static_cast<eUserRole>(choice+1);
 
-  AddUser(newUser);
-  gCurrentUser = &gUsers[gUsers.size()-1];
+  CreateUser(newUser);
+  SetActiveUser(newUser.UserID);
 }
