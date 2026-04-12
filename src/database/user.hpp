@@ -1,12 +1,11 @@
 #pragma once
 
 #include <string>
-#include <cstdint>
 #include <vector>
 
-enum class eUserStatus { Unknown = 0, Active, Suspended };
-enum class eUserRole { Unknown = 0, Student, Staff };
-enum class eFaculty {
+enum class UserStatus { Unknown = 0, Active, Suspended };
+enum class UserRole { Unknown = 0, Student, Staff };
+enum class Faculty {
   Unknown = 0,
   LCK_FES,
   FCI,
@@ -16,25 +15,29 @@ enum class eFaculty {
   MK_FMHS,
 };
 
-struct sUser {
-  sUser(std::string_view id = "", std::string_view email = "", std::string_view pass = "",
-        std::string_view cn = "", uint32_t faculty = 0, uint32_t status = 0, uint32_t role = 0)
-        : UserID(id), Email(email), Password(pass), ContactNumber(cn),
-          Faculty(static_cast<eFaculty>(faculty)), Status(static_cast<eUserStatus>(status)),
-          Role(static_cast<eUserRole>(role)) {};
+inline std::string FacultyToString(Faculty f){
+  switch (f) {
+  case Faculty::LCK_FES: return "LCK_FES";
+  case Faculty::FCI: return "FCI";
+  case Faculty::FAM: return "FAM";
+  case Faculty::FCS: return "FCS";
+  case Faculty::FEd: return "FEd";
+  case Faculty::MK_FMHS: return "MK_FMHS";
+  default: return "Unknown";
+  }
+}
 
+struct User {
   std::string UserID;
   std::string Email;
   std::string Password;
   std::string ContactNumber;
-  eFaculty Faculty = eFaculty::Unknown;
-  eUserStatus Status = eUserStatus::Unknown;
-  eUserRole Role = eUserRole::Unknown;
+  Faculty Faculty = Faculty::Unknown;
+  UserStatus Status = UserStatus::Unknown;
+  UserRole Role = UserRole::Unknown;
 };
 
-extern sUser* gCurrentUser;
+extern User gCurrentUser;
 void LoadUsers();
-void CreateUser(const sUser& user);
-std::vector<sUser*> MatchUsers(const sUser& filter, bool limitToOne=false);
-void SetActiveUser(std::string_view uid);
-std::string Parse(const sUser& user);
+void CreateUser(const User& user);
+std::vector<User> MatchUsers(const User& filter, bool limitToOne = false);

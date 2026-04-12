@@ -22,6 +22,10 @@ inline void cli_error(std::string_view text) {
   std::cout << gFmt.RED_BACKGROUND << gFmt.BOLD << "[Error] "<< text << gFmt.RESET << '\n';
 }
 
+inline void cli_field(std::string_view name, std::string_view value){
+  std::cout << gFmt.BOLD << name << ": " << gFmt.RESET << value << '\n';
+}
+
 void cli_clear();
 void cli_input(std::string_view prompt, std::string &val, bool obsecure = false);
 bool cli_bool(const std::string& prompt, bool def = true);

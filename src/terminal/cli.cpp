@@ -2,7 +2,7 @@
 #include <cstring>
 
 void cli_clear(){  
-  if(strcmp(gFmt.CLEAR_TERMINAL, "")){
+  if(strcmp(gFmt.CLEAR_TERMINAL, "") == 0){
 #ifdef _WIN32
     system("cls");
 #else

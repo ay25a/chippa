@@ -2,25 +2,21 @@
 #include "ui/common.hpp"
 #include "database/database.hpp"
 #include "database/user.hpp"
-#include <iostream>
 
 
 sANSIFormatter gFmt;
 
 int main(int argc, char **argv) {
-  // Choice to enable/disable formatter
-  // Choice to enable/disable interactive tui (to be implemented)
   InitializeDatabase();
   LoadUsers();
 
-  while(!gCurrentUser) 
+  while(gCurrentUser.UserID == "") 
     Authenticate();
 
-  if(gCurrentUser->Role == eUserRole::Student){
-    // Show student menu
+  if(gCurrentUser.Role == UserRole::Student) {
+    while(true) ShowStudentMenu();
   }
-  else{
-    // show staff menu
-  }
+  else ShowStaffMenu();
+  
   return 0;
 }
