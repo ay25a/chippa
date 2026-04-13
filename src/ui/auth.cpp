@@ -2,24 +2,24 @@
 #include "terminal/cli.hpp"
 #include "database/user.hpp"
 
-void Authenticate() {
+void ui_authentication() {
   cli_clear();
   cli_header("Authentication");
   uint32_t choice = cli_menu({"Login", "Register", "Exit"});
 
   switch (choice) {
-  case 0: // Login
-    Login();
+  case 0:
+    ui_login();
     break;
-  case 1: // Register
-    Register();
+  case 1:
+    ui_register();
     break;
   default:
     exit(0);
   }
 }
 
-void Login(){
+void ui_login(){
   for(;;){
     cli_clear();
     cli_header("Login User");
@@ -44,7 +44,7 @@ void Login(){
 }
 
 
-void Register(){
+void ui_register(){
   cli_clear();
   cli_header("New User");
 
@@ -75,7 +75,7 @@ void Register(){
   cli_input("Contact Number: ", newUser.ContactNumber);
 
   cli_subheader("Faculty");
-  uint32_t choice = cli_menu({"LCK_FES", "FCI", "FAM", "FCS", "FEd", "MK_FMHS"});
+  uint32_t choice = UI_FACULTY_MENU();
   newUser.Faculty = static_cast<Faculty>(choice+1);
   
   cli_subheader("User Type");

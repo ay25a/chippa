@@ -1,23 +1,17 @@
 #pragma once
 
-// Authentication
 #include "database/user.hpp"
 #include "terminal/cli.hpp"
-void Authenticate();
-void Login();
-void Register();
+
+#define UI_FACULTY_MENU() cli_menu({"LCK_FES", "FCI", "FAM", "FCS", "FEd", "MK_FMHS"})
+
+// Authentication
+void ui_authentication();
+void ui_login();
+void ui_register();
 
 // Menu
-void ShowStudentMenu();
-inline void ShowStaffMenu(){};
-
-// Common
-inline void ShowProfile(){
-  cli_header("Profile");
-  cli_field("Organization ID", gCurrentUser.UserID);
-  cli_field("Email", gCurrentUser.Email);
-  cli_field("Password", std::string(gCurrentUser.Password.size(), '*'));
-  cli_field("Contact Number", gCurrentUser.ContactNumber);
-  cli_field("Faculty", FacultyToString(gCurrentUser.Faculty));
-  cli_field("Status", (gCurrentUser.Status == UserStatus::Suspended ? "Suspended" : "Active"));
-}
+void ui_profile(const User& user);
+void ui_edit_profile();
+void ui_student_menu();
+inline void ui_staff_menu() {}

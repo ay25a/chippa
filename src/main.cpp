@@ -11,12 +11,12 @@ int main(int argc, char **argv) {
   LoadUsers();
 
   while(gCurrentUser.UserID == "") 
-    Authenticate();
+    ui_authentication();
 
   if(gCurrentUser.Role == UserRole::Student) {
-    while(true) ShowStudentMenu();
+    while(true) ui_student_menu();
   }
-  else ShowStaffMenu();
+  else ui_staff_menu();
   
   return 0;
 }
