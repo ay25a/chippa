@@ -1,25 +1,20 @@
 #include "common.hpp"
+#include "database/database.hpp"
 #include "terminal/cli.hpp"
-#include "database/user.hpp"
 
-void ui_authentication() {
+User ui_authentication() {
   cli_clear();
   cli_header("Authentication");
   uint32_t choice = cli_menu({"Login", "Register", "Exit"});
 
   switch (choice) {
-  case 0:
-    ui_login();
-    break;
-  case 1:
-    ui_register();
-    break;
-  default:
-    exit(0);
+  case 0:   return ui_login();
+  case 1:   return ui_register();
+  default:  exit(0);
   }
 }
 
-void ui_login(){
+User ui_login(){
   for(;;){
     cli_clear();
     cli_header("Login User");
@@ -30,30 +25,30 @@ void ui_login(){
     std::string password;
     cli_input("Password: ", password, true);
 
-    auto found = MatchUsers({"", email, password}, true);
-    if(found.size() != 0) {
-      gCurrentUser = found[0];
-      break;
-    }
+    auto found = db_match_entry(User{"", email, password}, true);
+    if(found.size() != 0) 
+      return found[0];
     
     cli_error("Wrong email or password!");
     
     if(!cli_bool("Try again?"))
       break;
   }
+
+  return {};
 }
 
 
-void ui_register(){
+User ui_register(){
   cli_clear();
   cli_header("New User");
 
   User newUser;
-  newUser.Status = UserStatus::Active;
+  newUser.Status = eUserStatus::Active;
 
   while(true){
     cli_input("Organization ID: ", newUser.UserID);
-    auto exists = MatchUsers({newUser.UserID}, true);
+    auto exists = db_match_entry(User{newUser.UserID}, true);
     if(exists.size() > 0){
       cli_error("a User already exists with the same organization id");
       continue;
@@ -63,7 +58,7 @@ void ui_register(){
 
   while(true){
     cli_input("Email: ", newUser.Email);
-    auto exists = MatchUsers({"", newUser.Email}, true);
+    auto exists = db_match_entry(User{"", newUser.Email}, true);
     if(exists.size() > 0){
       cli_error("Email address already exists!");
       continue;
@@ -76,12 +71,12 @@ void ui_register(){
 
   cli_subheader("Faculty");
   uint32_t choice = UI_FACULTY_MENU();
-  newUser.Faculty = static_cast<Faculty>(choice+1);
+  newUser.Faculty = C_FACULTIES[choice];
   
   cli_subheader("User Type");
   choice = cli_menu({"Student", "Staff"});
-  newUser.Role = static_cast<UserRole>(choice+1);
-  
-  CreateUser(newUser);
-  gCurrentUser = newUser;
+  newUser.Role = static_cast<eUserRole>(choice+1);
+
+  db_add_entry(newUser);
+  return newUser;
 }

@@ -1,19 +1,17 @@
 #include "terminal/formatter.hpp"
 #include "ui/common.hpp"
 #include "database/database.hpp"
-#include "database/user.hpp"
-
 
 sANSIFormatter gFmt;
+User gCurrentUser = {};
 
 int main(int argc, char **argv) {
-  InitializeDatabase();
-  LoadUsers();
+  db_load(eDatabaseEntity::User);
 
-  while(gCurrentUser.UserID == "") 
-    ui_authentication();
+  while(gCurrentUser.UserID.empty()) 
+    gCurrentUser = ui_authentication();
 
-  if(gCurrentUser.Role == UserRole::Student) {
+  if(gCurrentUser.Role == eUserRole::Student) {
     while(true) ui_student_menu();
   }
   else ui_staff_menu();

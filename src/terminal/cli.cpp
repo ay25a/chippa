@@ -21,7 +21,7 @@ void cli_input(std::string_view prompt, std::string &val, bool obsecure){
   if (obsecure) std::cout << gFmt.RESET;
 }
 
-uint32_t cli_menu(const std::vector<std::string> &items) {
+uint32_t cli_menu(const std::vector<const char*> &items) {
   for (size_t i = 0; i < items.size(); ++i)
     std::cout << "(" << i << ") " << items[i] << "\n";
 

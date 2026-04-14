@@ -29,4 +29,4 @@ inline void cli_field(std::string_view name, std::string_view value){
 void cli_clear();
 void cli_input(std::string_view prompt, std::string &val, bool obsecure = false);
 bool cli_bool(const std::string& prompt, bool def = true);
-uint32_t cli_menu(const std::vector<std::string> &items);
+uint32_t cli_menu(const std::vector<const char*> &items);

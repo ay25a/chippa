@@ -1,14 +1,15 @@
 #pragma once
 
-#include "database/user.hpp"
-#include "terminal/cli.hpp"
+#include "database/entities.hpp"
 
-#define UI_FACULTY_MENU() cli_menu({"LCK_FES", "FCI", "FAM", "FCS", "FEd", "MK_FMHS"})
+#define UI_FACULTY_MENU() cli_menu(std::vector<const char*>(std::begin(C_FACULTIES), std::end(C_FACULTIES)))
+
+extern User gCurrentUser;
 
 // Authentication
-void ui_authentication();
-void ui_login();
-void ui_register();
+User ui_authentication();
+User ui_login();
+User ui_register();
 
 // Menu
 void ui_profile(const User& user);
