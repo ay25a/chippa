@@ -36,7 +36,7 @@ void ui_edit_profile(){
   case 0: 
   while(true) {
     std::string email;
-    cli_input("Email", email);
+    cli_input("Email: ", email);
     auto exists = db_match_entry(User{"", email}).size() != 0;
 
     if(!exists) {
@@ -49,11 +49,11 @@ void ui_edit_profile(){
   }
   break;
   case 1:
-    cli_input("Password", gCurrentUser.Password);
+    cli_input("Password: ", gCurrentUser.Password);
     modified = true;
     break;
   case 2:
-    cli_input("Contact Number", gCurrentUser.ContactNumber);
+    cli_input("Contact Number: ", gCurrentUser.ContactNumber);
     modified = true;
     break;
   case 3: {

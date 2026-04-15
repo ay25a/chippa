@@ -47,10 +47,25 @@ static std::string Parse(const Vehicle& v);
 static std::string Parse(const ParkingPass& pass);
 static std::string Parse(const ParkingApplication& app);
 
-void db_add_entry(const User& user){ WriteToFile(USERS_PATH, Parse(user)); }
-void db_add_entry(const Vehicle& v){ WriteToFile(VEHICLES_PATH, Parse(v)); }
-void db_add_entry(const ParkingApplication& app){ WriteToFile(APPLICATIONS_PATH, Parse(app)); }
-void db_add_entry(const ParkingPass& pass){ WriteToFile(PASSES_PATH, Parse(pass)); }
+void db_add_entry(const User& user){ 
+  WriteToFile(USERS_PATH, Parse(user)); 
+  gUsers.push_back(user);
+}
+
+void db_add_entry(const Vehicle& v){ 
+  WriteToFile(VEHICLES_PATH, Parse(v)); 
+  gVehicles.push_back(v);
+}
+
+void db_add_entry(const ParkingApplication& app){ 
+  WriteToFile(APPLICATIONS_PATH, Parse(app));
+  gApplications.push_back(app);
+}
+
+void db_add_entry(const ParkingPass& pass){ 
+  WriteToFile(PASSES_PATH, Parse(pass));
+  gPasses.push_back(pass);
+}
 
 
 // Updating Entries
@@ -111,7 +126,7 @@ std::vector<User> db_match_entry(const User& f, bool limitToOne){
     if(!f.Email.empty() && f.Email != user.Email) continue;
     if(!f.Password.empty() && f.Password != user.Password) continue;
     if(!f.ContactNumber.empty() && f.ContactNumber != user.ContactNumber) continue;
-    if(f.Faculty.empty() && f.Faculty != user.Faculty) continue;
+    if(!f.Faculty.empty() && f.Faculty != user.Faculty) continue;
     if(f.Status != eUserStatus::Unknown && f.Status != user.Status) continue;
     if(f.Role != eUserRole::Unknown && f.Role != user.Role) continue;
     
@@ -234,8 +249,7 @@ static void LoadUsers(){
     std::vector<std::string> attrs = ReadAttributes(content, i);
 
     try {
-      User u{attrs[0], attrs[1], attrs[2], attrs[3]};
-      u.Faculty = C_FACULTIES[std::stoi(attrs[4])];
+      User u{attrs[0], attrs[1], attrs[2], attrs[3], attrs[4]};
       u.Status = static_cast<eUserStatus>(std::stoi(attrs[5]));
       u.Role = static_cast<eUserRole>(std::stoi(attrs[6]));
 
