@@ -1,5 +1,6 @@
 #include "cli.hpp"
 #include <cstring>
+#include <iomanip>
 
 void cli_clear(){  
   if(strcmp(gFmt.CLEAR_TERMINAL, "") == 0){
@@ -51,4 +52,18 @@ bool cli_bool(const std::string& prompt, bool def){
     return false;
 
   return def;
+}
+
+void cli_table(const std::vector<const char*>& names, const std::vector<std::vector<std::string>>& values){
+  std::cout << gFmt.BOLD;
+  for(const auto& str: names)
+    std::cout << std::setw(8) << str << "\t";
+  std::cout << gFmt.RESET << "\n";
+
+  cli_separator(30, '-');
+  for(const auto& v: values){
+    for(const auto& str: v)
+      std::cout << std::setw(8) << str << "\t";
+    std::cout << "\n";
+  }
 }

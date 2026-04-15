@@ -1,13 +1,4 @@
-#ifdef _WIN32
-#include <windows.h>
-#include <limits.h>
-#else
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#endif
 #include <fstream>
-
 #include "database.hpp"
 
 // Initialization

@@ -11,10 +11,14 @@ int main(int argc, char **argv) {
   while(gCurrentUser.UserID.empty()) 
     gCurrentUser = ui_authentication();
 
-  if(gCurrentUser.Role == eUserRole::Student) {
+  db_load(eDatabaseEntity::Vehicle);
+  db_load(eDatabaseEntity::Application);
+  db_load(eDatabaseEntity::Pass);
+
+  if(gCurrentUser.Role == eUserRole::Student)
     while(true) ui_student_menu();
-  }
-  else ui_staff_menu();
+  else 
+    while (true) ui_staff_menu();
   
   return 0;
 }

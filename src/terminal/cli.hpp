@@ -30,3 +30,4 @@ void cli_clear();
 void cli_input(std::string_view prompt, std::string &val, bool obsecure = false);
 bool cli_bool(const std::string& prompt, bool def = true);
 uint32_t cli_menu(const std::vector<const char*> &items);
+void cli_table(const std::vector<const char*>& names, const std::vector<std::vector<std::string>>& values);
