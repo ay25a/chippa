@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cstring>
-#include <string_view>
+#include <cstdint>
 
-enum class eUserStatus { Unknown = 0, Active, Suspended };
-enum class eUserRole { Unknown = 0, Student, Staff };
+enum class eUserStatus: uint16_t { Unknown = 0, Active, Suspended };
+enum class eUserRole: uint16_t { Unknown = 0, Student, Staff };
 
 constexpr const char* C_FACULTIES[] = {"LCK_FES", "FCI", "FAM", "FEd", "FCS", "MK_FMHS"};
 
@@ -21,10 +21,10 @@ struct User {
 
   bool match(const User& f) const {
     if(f.id != 0 && f.id != id) return false;
-    if(std::string_view(f.password) != "" && strcmp(f.password, password) != 0) return false;
-    if(std::string_view(f.contactNumber) != "" && strcmp(f.contactNumber, contactNumber) != 0) return false;
-    if(std::string_view(f.fullname) != "" && strcmp(f.fullname, f.fullname) != 0) return false;
-    if(std::string_view(f.faculty) != "" && strcmp(f.faculty, faculty) != 0) return false;
+    if(f.password[0] != '\0' && strcmp(f.password, password) != 0) return false;
+    if(f.contactNumber[0] != '\0' && strcmp(f.contactNumber, contactNumber) != 0) return false;
+    if(f.fullname[0] != '\0' && strcmp(f.fullname, fullname) != 0) return false;
+    if(f.faculty[0] != '\0' && strcmp(f.faculty, faculty) != 0) return false;
     if(f.age != 0 && f.age != age) return false;
     if(f.status != eUserStatus::Unknown && f.status != status) return false;
     if(f.role != eUserRole::Unknown && f.role != role) return false;
@@ -43,15 +43,15 @@ struct Vehicle {
   bool match(const Vehicle& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(f.userid != 0 && f.userid != userid) return false;
-    if(std::string_view(f.model) != "" && strcmp(f.model, model) != 0) return false;
-    if(std::string_view(f.plate) != "" && strcmp(f.plate, plate) != 0) return false;
+    if(f.plate[0] != '\0' && strcmp(f.model, model) != 0) return false;
+    if(f.model[0] != '\0' && strcmp(f.plate, plate) != 0) return false;
     return true;
   }
 };
 
 // Parking Pass
-enum class ePassDuration { Unknown = 0, OneMonth, TwoMonths, ThreeMonths };
-enum class ePassStatus { Unknown = 0, Active, Suspended, Expired };
+enum class ePassDuration: uint16_t { Unknown = 0, OneMonth, TwoMonths, ThreeMonths };
+enum class ePassStatus: uint16_t { Unknown = 0, Active, Suspended, Expired };
 
 struct ParkingPass{
   static constexpr const char* FILE = "passes.dat";
@@ -74,7 +74,7 @@ struct ParkingPass{
 };
 
 // Parking Application
-enum class eApplicationStatus { Unknown = 0, Rejected, Completed, PendingPayment, WaitingForReview };
+enum class eApplicationStatus: uint16_t { Unknown = 0, Rejected, Completed, PendingPayment, WaitingForReview };
 
 struct ParkingApplication{
   static constexpr const char* FILE = "applications.dat";
