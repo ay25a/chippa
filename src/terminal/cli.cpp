@@ -2,6 +2,9 @@
 #include <iomanip>
 
 bool StringToInt(std::string_view str, int& out){
+  if(str.empty()) 
+    return false;
+  
   for(const auto& ch: str){
     if(!std::isdigit(ch)) 
       return false;
@@ -21,11 +24,11 @@ void cli_confirm(){
 bool cli_boolean(std::string_view prompt){
   std::string str;
   while(true){
-    cli_input(prompt, str);
+    cli_input(std::string(prompt) + " (y/n) ", str);
     if(str == "n" || str == "no") 
       return false;
     else if(str == "y" || str == "yes")
-      return false;
+      return true;
 
     cli_error("Invalid option!");
   }
@@ -44,7 +47,7 @@ unsigned int cli_menu(const std::vector<std::string> &items) {
 
   std::string input;
   while (true) {
-    std::cout << "(0 - " << items.size() << ") > ";
+    std::cout << "(0 - " << items.size() - 1 << ") > ";
     std::getline(std::cin, input);
 
     int choice = 0;

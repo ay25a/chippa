@@ -19,7 +19,7 @@ struct User {
   eUserStatus status = eUserStatus::Unknown;
   eUserRole role = eUserRole::Unknown;
 
-  bool match(const User& f){
+  bool match(const User& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(std::string_view(f.password) != "" && strcmp(f.password, password) != 0) return false;
     if(std::string_view(f.contactNumber) != "" && strcmp(f.contactNumber, contactNumber) != 0) return false;
@@ -37,11 +37,13 @@ struct Vehicle {
   static constexpr const char* FILE = "vehicles.dat";
   int id = 0;
   int userid = 0;
+  char model[8] = "";
   char plate[8] = "";
 
-  bool match(const Vehicle& f){
+  bool match(const Vehicle& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(f.userid != 0 && f.userid != userid) return false;
+    if(std::string_view(f.model) != "" && strcmp(f.model, model) != 0) return false;
     if(std::string_view(f.plate) != "" && strcmp(f.plate, plate) != 0) return false;
     return true;
   }
@@ -60,7 +62,7 @@ struct ParkingPass{
   ePassDuration duration = ePassDuration::Unknown;
   ePassStatus status = ePassStatus::Unknown; 
 
-  bool match(const ParkingPass& f){
+  bool match(const ParkingPass& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(f.userid != 0 && f.userid != userid) return false;
     if(f.appid != 0 && f.appid != appid) return false;
@@ -83,7 +85,7 @@ struct ParkingApplication{
   ePassDuration duration = ePassDuration::Unknown;
   eApplicationStatus status = eApplicationStatus::Unknown;
 
-  bool match(const ParkingApplication& f){
+  bool match(const ParkingApplication& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(f.userid != 0 && f.userid != userid) return false;
     if(f.oldPassID != 0 && f.oldPassID != oldPassID) return false;

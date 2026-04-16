@@ -93,7 +93,7 @@ inline bool db_add_record(const Entity_T& rec){
 
 template <class Entity_T>
 inline bool db_delete_record(int id){
-  std::fstream f(Entity_T::FILE, std::ios_base::in | std::ios_base::out | std::ios_base::binary | std::ios_base::app);
+  std::fstream f(Entity_T::FILE, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
 
   // File couldn't be open, likely empty
   if(!f.is_open()) 
@@ -108,25 +108,25 @@ inline bool db_delete_record(int id){
     return false;
 
   arr.erase(it);
-  f.write(reinterpret_cast<char*>(arr.data()), arr.size() * sizeof(Entity_T));
   f.close();
+  f.open(Entity_T::FILE, std::ios_base::trunc | std::ios_base::out);
+  f.write(reinterpret_cast<char*>(arr.data()), arr.size() * sizeof(Entity_T));
 
   return true;
 }
 
 template <class Entity_T>
 inline bool db_update_record(const Entity_T& mod){
-  std::ofstream f(Entity_T::FILE, std::ios_base::out | std::ios_base::binary);
+  std::fstream f(Entity_T::FILE, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
   if(!f.is_open()) 
     return false;
 
-  Entity_T old{};
-  auto index = db_find_by_id(mod.id, old);
+  auto index = db_find_by_id<Entity_T>(mod.id, nullptr);
   if(index == ENTRY_NOT_FOUND)
     return false;
   
   f.seekp(index * sizeof(Entity_T));
-  f.write(reinterpret_cast<char*>(&mod), sizeof(Entity_T));
+  f.write(reinterpret_cast<const char*>(&mod), sizeof(Entity_T));
   f.close();
 
   return true;
@@ -134,7 +134,7 @@ inline bool db_update_record(const Entity_T& mod){
 
 template<class Entity_T>
 inline std::vector<Entity_T> db_find(const Entity_T& filter){
-  std::ifstream f(Entity_T::FILE, std::ios_base::binary | std::ios_base::in);
+  std::fstream f(Entity_T::FILE, std::ios_base::binary | std::ios_base::in);
   if(!f.is_open()) 
     return {};
 

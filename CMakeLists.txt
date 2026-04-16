@@ -6,6 +6,8 @@ set(SOURCES
 ${CMAKE_SOURCE_DIR}/src/main.cpp
 ${CMAKE_SOURCE_DIR}/src/terminal/cli.cpp
 ${CMAKE_SOURCE_DIR}/src/ui/auth.cpp
+${CMAKE_SOURCE_DIR}/src/ui/student.cpp
+${CMAKE_SOURCE_DIR}/src/ui/staff.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

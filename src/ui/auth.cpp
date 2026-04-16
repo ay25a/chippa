@@ -1,16 +1,6 @@
-#include "common.hpp"
+#include "elements.hpp"
 #include "database/database.hpp"
 #include "terminal/cli.hpp"
-#include <cstring>
-
-inline std::string CheckPassword(std::string_view value){ 
-  if(value.size() > 12)
-    return "Password is too long, shouldn't be more than 12 characters!";
-  else if(value.size() < 5)
-    return "Password is too short, should be at least 5 characters!";
-  
-  return "";
- }
 
 bool ui_authentication() {
   cli_clear();
@@ -27,7 +17,7 @@ bool ui_authentication() {
     exit(0);
   }
 
-  return gCurrentUser.id == 0;
+  return gCurrentUser.id != 0;
 }
 
 User ui_login(){
@@ -53,7 +43,6 @@ User ui_login(){
   return found;
 }
 
-
 User ui_register(){
   cli_clear();
   cli_header("New User");
@@ -72,41 +61,17 @@ User ui_register(){
     return {};
   }
 
-  std::string password = cli_input_valid<std::string>("Password: ", [](std::string_view in, std::string& out){
-    if(in.size() < 5 || in.size() >= 12)
-      return "Password needs to be from 5 to 11 characters!";
-    out = in;
-    return "";
-  });
-
-  std::string contact = cli_input_valid<std::string>("Contact Numer: ", [](std::string_view in, std::string& out){
-    int dummy = 0;
-    if(!StringToInt(in, dummy) || in.size() != 10)
-      return "Please enter valid contact number!";
-    out = in;
-    return "";
-  });
-
-  std::string name = cli_input_valid<std::string>("Full Name: ", [](std::string_view in, std::string& out){
-    if(in.size() < 3 || in.size() > 31)
-      return "Name needs to be at least 3 letters and at most 31 letters!";
-    out = in;
-    return "";
-  });
-    
-
-  int age = cli_input_valid<int>("Age: ", [](std::string_view in, int& out){
-    if(!StringToInt(in, out))
-      return "Age can only contain numbers!";
-    return (out < 16 || out > 99) ? "Age should be between 16 and 99" : "";
-  });
+  std::string password = cli_input_valid<std::string>("Password: ", validate_password);
+  std::string contact = cli_input_valid<std::string>("Contact Numer: ", validate_contact_number);
+  std::string name = cli_input_valid<std::string>("Full Name: ", validate_full_name);
+  int age = cli_input_valid<int>("Age: ", validate_age);
 
   cli_subheader("Faculty");
   auto choice = UI_FACULTY_MENU();
   std::string_view faculty = C_FACULTIES[choice];
 
   cli_subheader("User Type");
-  auto role = cli_menu({"Student", "Staff"});
+  auto role = cli_menu({"Student", "Staff"}) + 1;
 
   User user {userid};
   std::copy(password.begin(), password.end(), &user.password[0]);
@@ -124,4 +89,32 @@ User ui_register(){
   }
   
   return user;
+}
+
+std::string validate_password(std::string_view in, std::string &out){
+  if(in.size() < 5 || in.size() >= 12)
+      return "Password needs to be from 5 to 11 characters!";
+  out = in;
+  return "";
+}
+
+std::string validate_contact_number(std::string_view in, std::string &out){
+  int dummy = 0;
+  if(!StringToInt(in, dummy) || in.size() != 10)
+    return "Please enter valid contact number!";
+  out = in;
+  return "";
+}
+
+std::string validate_full_name(std::string_view in, std::string &out){
+  if(in.size() < 3 || in.size() > 31)
+    return "Name needs to be at least 3 letters and at most 31 letters!";
+  out = in;
+  return "";
+}
+
+std::string validate_age(std::string_view in, int &out){
+  if(!StringToInt(in, out))
+    return "Age can only contain numbers!";
+  return (out < 16 || out > 99) ? "Age should be between 16 and 99" : "";
 }
