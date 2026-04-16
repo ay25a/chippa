@@ -1,40 +1,42 @@
 #include "cli.hpp"
-#include <cstring>
 #include <iomanip>
 
-void cli_clear(){  
-  if(strcmp(gFmt.CLEAR_TERMINAL, "") == 0){
-#ifdef _WIN32
-    system("cls");
-#else
-  system("clear");
-#endif
+bool StringToInt(std::string_view str, int& out){
+  for(const auto& ch: str){
+    if(!std::isdigit(ch)) 
+      return false;
   }
 
-  else 
-    std::cout << gFmt.CLEAR_TERMINAL;
+  out = std::stoi(str.data());
+  return true;
 }
 
-void cli_input(const InputDesc& desc){
+void cli_confirm(){
+  std::cout << gFmt.BOLD << "Press any key " << gFmt.RESET;
+  std::string dummy;
+  std::getline(std::cin, dummy);
+}
+
+
+bool cli_boolean(std::string_view prompt){
+  std::string str;
   while(true){
-    std::cout << gFmt.BOLD << desc.prompt << gFmt.RESET;
-  
-    if (desc.obsecure) std::cout << gFmt.WHITE_BACKGROUND;
-    std::string input;
-    std::getline(std::cin, input);
-    if (desc.obsecure) std::cout << gFmt.RESET;
+    cli_input(prompt, str);
+    if(str == "n" || str == "no") 
+      return false;
+    else if(str == "y" || str == "yes")
+      return false;
 
-    auto error = desc.validate(input);
-    if(error.empty()){
-      desc.out = input;
-      break;
-    }
-
-    cli_error(error);
+    cli_error("Invalid option!");
   }
 }
 
-uint32_t cli_menu(const std::vector<const char*> &items) {
+void cli_input(std::string_view prompt, std::string& value){
+  std::cout << prompt;
+  std::getline(std::cin, value);
+}
+
+unsigned int cli_menu(const std::vector<std::string> &items) {
   for (size_t i = 0; i < items.size(); ++i)
     std::cout << "(" << i << ") " << items[i] << "\n";
 
@@ -42,40 +44,44 @@ uint32_t cli_menu(const std::vector<const char*> &items) {
 
   std::string input;
   while (true) {
-    std::cout << "(0 - " << items.size() - 1 << ") > ";
+    std::cout << "(0 - " << items.size() << ") > ";
     std::getline(std::cin, input);
 
-    try {
-      int choice = std::stoi(input);
-      if(choice < 0 || choice >= items.size()) 
-        throw std::exception();
-
+    int choice = 0;
+    if(!StringToInt(input, choice) || (choice < 0 || choice > items.size() - 1))
+      cli_error("Invalid choice!");
+    else
       return choice;
-    }catch(const std::exception& e) { cli_error("Invalid choice!"); }
   }
 }
 
-bool cli_bool(const std::string& prompt, bool def){
-  std::string str;
-  cli_input({prompt + " (y/n) ", str});
-  if(str == "y") 
-    return true;
-  else if(str == "n") 
-    return false;
+void cli_table(const std::vector<std::string>& names, const std::vector<std::vector<std::string>>& values){
+  size_t cols = names.size();
+  std::vector<size_t> width(cols, 0);
 
-  return def;
-}
+  auto print_row = [&](const auto& row) {
+    for (size_t i = 0; i < row.size(); ++i)
+      std::cout << std::left << std::setw(width[i] + 2) << row[i];
+    
+    std::cout << '\n';
+  };
 
-void cli_table(const std::vector<const char*>& names, const std::vector<std::vector<std::string>>& values){
+  for (size_t i = 0; i < cols; ++i)
+    width[i] = names[i].size();
+
+  for (const auto& row : values)
+    for (size_t i = 0; i < row.size(); ++i)
+      width[i] = std::max(width[i], row[i].size());
+    
   std::cout << gFmt.BOLD;
-  for(const auto& str: names)
-    std::cout << std::setw(8) << str << "\t";
-  std::cout << gFmt.RESET << "\n";
+  print_row(names);
+  std::cout << gFmt.RESET;
 
-  cli_separator(30, '-');
-  for(const auto& v: values){
-    for(const auto& str: v)
-      std::cout << std::setw(8) << str << "\t";
-    std::cout << "\n";
-  }
+  size_t total = 0;
+  for (auto w : width) 
+  total += w + 2;
+  cli_separator(total, '-');
+
+  for (const auto& row : values)
+    print_row(row);
 }

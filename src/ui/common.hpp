@@ -3,14 +3,14 @@
 #include "database/entities.hpp"
 
 // Helpers
-#define UI_FACULTY_MENU() cli_menu(std::vector<const char*>(std::begin(C_FACULTIES), std::end(C_FACULTIES)))
+#define UI_FACULTY_MENU() cli_menu(std::vector<std::string>(std::begin(C_FACULTIES), std::end(C_FACULTIES)))
 #define REPEATED_BEGIN() for(;;) {
 #define REPEATED_BREAK() break
 #define REPEATED_END() }
 
 // Authentication
 extern User gCurrentUser;
-User ui_authentication();
+bool ui_authentication();
 User ui_login();
 User ui_register();
 

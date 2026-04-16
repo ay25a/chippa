@@ -12,41 +12,45 @@ inline std::string CheckPassword(std::string_view value){
   return "";
  }
 
-User ui_authentication() {
+bool ui_authentication() {
   cli_clear();
   cli_header("Authentication");
-  uint32_t choice = cli_menu({"Login", "Register", "Exit"});
 
-  switch (choice) {
-  case 0:   return ui_login();
-  case 1:   return ui_register();
-  default:  exit(0);
+  switch (cli_menu({"Login", "Register", "Exit"})) {
+  case 0:   
+    gCurrentUser = ui_login();
+    break;
+  case 1:   
+    gCurrentUser = ui_register();
+    break;
+  default:  
+    exit(0);
   }
+
+  return gCurrentUser.id == 0;
 }
 
 User ui_login(){
-  User user{};
   cli_clear();
   cli_header("Login");
-
-  std::string userID;
-  cli_input(InputDesc{"Organization ID: ", userID, false, [](std::string_view value){
-    try{
-      std::stoi(value.data());
-      return "";
-    }catch(const std::exception&){
-      return "Organization ID shouldn't contain any letters!";
-    }
-  }});
+  
+  
+  int userid = cli_input_valid<int>("User ID: ", [](std::string_view in, int& out) {
+    return !StringToInt(in, out) ? "User id can only contain numbers!" : "";
+  });
   
   std::string password;
-  cli_input({"Password: ", password, true});
+  cli_input("Password: ", password);
 
-  int index = db_find_by_id(std::stoi(userID), user);
-  if(index == ENTRY_NOT_FOUND|| strcmp(user.password, password.c_str()) != 0)
+  User found{};
+  int index = db_find_by_id<User>(userid, &found);
+  if(index == ENTRY_NOT_FOUND || strcmp(found.password, password.c_str()) != 0){
     cli_error("Incorrect email or password!");
+    cli_confirm();
+    return {};
+  }
 
-  return user;
+  return found;
 }
 
 
@@ -54,76 +58,70 @@ User ui_register(){
   cli_clear();
   cli_header("New User");
 
-  User newUser{};
+  int userid = cli_input_valid<int>("User ID (Organization ID): ", [](std::string_view in, int& out) {
+    if(!StringToInt(in, out)) 
+      return "User id can only contain numbers!";
 
-  std::string userID;
-  cli_input({"Organization ID: ", userID, false, [](std::string_view value){
-    return "";
-    try{
-      std::stoi(value.data());
-      if(value.size() < 5) 
-        throw std::exception();
+    return in.size() < 5 ? "Invalid user id!" : "";
+  });
 
-      return "";
-    }catch(const std::exception&){
-      return "Invalid Organization ID: should contain only numbers, and at least be 5 digits";
-    }
-  }});
-  newUser.id = std::stoi(userID);
-
-  User found{};
-  int index = db_find_by_id(newUser.id, found);
-  if(index != -1){
+  int index = db_find_by_id<User>(userid, nullptr);
+  if(index != ENTRY_NOT_FOUND){
     cli_error("User already exists! Try logging in...");
+    cli_confirm();
     return {};
   }
 
-  std::string pass;
-  cli_input({"Password: ", pass, true, CheckPassword});
-  memcpy(&newUser.password[0], pass.data(), pass.size());
-
-  std::string contact;
-  cli_input({"Contact Number: ", contact, false, [](std::string_view value){
+  std::string password = cli_input_valid<std::string>("Password: ", [](std::string_view in, std::string& out){
+    if(in.size() < 5 || in.size() >= 12)
+      return "Password needs to be from 5 to 11 characters!";
+    out = in;
     return "";
-    if(value.size() != 10)
-      return "Contact Number should be 10 digits";
+  });
 
+  std::string contact = cli_input_valid<std::string>("Contact Numer: ", [](std::string_view in, std::string& out){
+    int dummy = 0;
+    if(!StringToInt(in, dummy) || in.size() != 10)
+      return "Please enter valid contact number!";
+    out = in;
     return "";
-  }});
-  memcpy(&newUser.contactNumber[0], contact.data(), contact.size());
+  });
 
-  std::string name;
-  cli_input({"Full name: ", name, false, [](std::string_view value){
-    if(value.size() == 0)
-      return "Name cannot be empty!";
-
+  std::string name = cli_input_valid<std::string>("Full Name: ", [](std::string_view in, std::string& out){
+    if(in.size() < 3 || in.size() > 31)
+      return "Name needs to be at least 3 letters and at most 31 letters!";
+    out = in;
     return "";
-  }});
-  memcpy(&newUser.fullname[0], name.data(), name.size());
+  });
+    
 
-  std::string age;
-  cli_input({"Age: ", age, false, [&](std::string_view value){
-    try{
-      int age = std::stoi(value.data());
-      if(age < 16 || age > 80)
-        return "Age should be between 16 and 80!";
-
-      newUser.age = age;
-      return "";
-    }catch(const std::exception&){
-      return "Age cannot contain letters!";
-    }
-  }});
+  int age = cli_input_valid<int>("Age: ", [](std::string_view in, int& out){
+    if(!StringToInt(in, out))
+      return "Age can only contain numbers!";
+    return (out < 16 || out > 99) ? "Age should be between 16 and 99" : "";
+  });
 
   cli_subheader("Faculty");
-  uint32_t choice = UI_FACULTY_MENU();
-  memcpy(&newUser.faculty, C_FACULTIES[choice], std::string_view(C_FACULTIES[choice]).size());
-  
-  cli_subheader("User Type");
-  choice = cli_menu({"Student", "Staff"});
-  newUser.role = static_cast<eUserRole>(choice+1);
-  newUser.status = eUserStatus::Active;
+  auto choice = UI_FACULTY_MENU();
+  std::string_view faculty = C_FACULTIES[choice];
 
-  db_add_record(newUser);
-  return newUser;
+  cli_subheader("User Type");
+  auto role = cli_menu({"Student", "Staff"});
+
+  User user {userid};
+  std::copy(password.begin(), password.end(), &user.password[0]);
+  std::copy(contact.begin(), contact.end(), &user.contactNumber[0]);
+  std::copy(name.begin(), name.end(), &user.fullname[0]);
+  std::copy(faculty.begin(), faculty.end(), &user.faculty[0]);
+  user.age = age;
+  user.status = eUserStatus::Active;
+  user.role = static_cast<eUserRole>(role);
+
+  if(!db_add_record(user)){
+    cli_error("Failed to add entry to database!");
+    cli_confirm();
+    return {};
+  }
+  
+  return user;
 }

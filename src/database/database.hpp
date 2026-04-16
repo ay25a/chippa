@@ -31,7 +31,7 @@ inline std::vector<Entity_T> db_get_records(std::fstream& f){
 * Returns either `ENTITY_NOT_FOUND` or the index of the found entity.
 */
 template<class Entity_T>
-inline int db_find_by_id(int id, Entity_T& out){
+inline int db_find_by_id(int id, Entity_T* out){
   std::fstream f(Entity_T::FILE, std::ios_base::binary | std::ios_base::in);
 
   // File couldn't be open, likely empty
@@ -49,8 +49,11 @@ inline int db_find_by_id(int id, Entity_T& out){
 
   if(it == arr.end() || it->id != id)
     return ENTRY_NOT_FOUND;
-  else
+  else {
+    if(out != nullptr)
+      *out = *it;
     return static_cast<size_t>(it - arr.begin());
+  }
 }
 
 /*

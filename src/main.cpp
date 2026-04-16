@@ -10,8 +10,8 @@ int main(int argc, char **argv) {
   //if(!cli_bool("Does this text display correctly?"))
   //  DisableFormatter();
 
-  while(gCurrentUser.id == 0) 
-    gCurrentUser = ui_authentication();
+  while(!ui_authentication()); 
+    
 /*
   db_load_vehicles();
   db_load_passes();

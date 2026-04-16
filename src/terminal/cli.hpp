@@ -1,43 +1,51 @@
 #pragma once
 
 #include "formatter.hpp"
-#include <cstdint>
-#include <functional>
 #include <iostream>
 #include <string>
 #include <vector>
+#include <functional>
 
-inline void cli_header(std::string_view text) {
-  std::cout << '\n' << gFmt.BOLD << gFmt.UNDERLINE << text << gFmt.RESET << "\n\n";
-}
+// Stateless CLI Elements
+#ifdef _WIN32
+#define cli_clear() system("cls")
+#else
+#define cli_clear() system("clear")
+#endif
 
-inline void cli_subheader(std::string_view text){
-  std::cout << '\n' << gFmt.BOLD << text << gFmt.RESET << '\n';
-}
-
-inline void cli_separator(size_t length, char ch = '=') {
+#define cli_header(content) std::cout << '\n' << gFmt.BOLD << gFmt.UNDERLINE << content << gFmt.RESET << "\n\n"
+#define cli_subheader(content) std::cout << '\n' << gFmt.BOLD << content << gFmt.RESET << '\n'
+#define cli_field(name, value) std::cout << gFmt.BOLD << name << ": " << gFmt.RESET << value << '\n'
+inline void cli_separator(size_t length, char ch = '=') { 
   std::cout << std::string(length, ch) << '\n';
 }
 
-inline void cli_error(std::string_view text) {
-  std::cout << gFmt.RED_BACKGROUND << gFmt.BOLD << "[Error] " << text << gFmt.RESET << '\n';
-  std::cin.get();
+#define cli_error(content) \
+  std::cout << gFmt.RED_BACKGROUND << gFmt.BOLD << "[Error] " << content << gFmt.RESET << '\n'
+
+extern void cli_table(const std::vector<std::string> &names, const std::vector<std::vector<std::string>> &values);
+
+// Stateful CLI Elements
+extern void cli_confirm();
+extern bool cli_boolean(std::string_view prompt);
+extern void cli_input(std::string_view prompt, std::string& value);
+extern unsigned int cli_menu(const std::vector<std::string> &items);
+
+// Helpers
+extern bool StringToInt(std::string_view str, int& out);
+
+template <class _Tp>
+_Tp cli_input_valid(const std::string& prompt, std::function<std::string(std::string_view, _Tp&)> v) {
+    std::string input;
+
+  while (true) {
+    cli_input(prompt, input);
+
+    _Tp value{};
+    std::string error = v(input, value);
+    if (error.empty())
+      return value;
+
+    cli_error(error);
+  }
 }
-
-inline void cli_field(std::string_view name, std::string_view value){
-  std::cout << gFmt.BOLD << name << ": " << gFmt.RESET << value << '\n';
-}
-
-void cli_clear();
-bool cli_bool(const std::string& prompt, bool def = true);
-uint32_t cli_menu(const std::vector<const char*> &items);
-void cli_table(const std::vector<const char*>& names, const std::vector<std::vector<std::string>>& values);
-
-struct InputDesc{
-  std::string_view prompt; 
-  std::string& out; 
-  bool obsecure = false; 
-  std::function<std::string(std::string_view)> validate = [](std::string_view){ return ""; };
-};
-
-void cli_input(const InputDesc& desc);
