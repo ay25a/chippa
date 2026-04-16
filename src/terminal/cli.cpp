@@ -11,15 +11,27 @@ void cli_clear(){
 #endif
   }
 
-  else std::cout << gFmt.CLEAR_TERMINAL;
+  else 
+    std::cout << gFmt.CLEAR_TERMINAL;
 }
 
-void cli_input(std::string_view prompt, std::string &val, bool obsecure){
-  std::cout << gFmt.BOLD << prompt << gFmt.RESET;
+void cli_input(const InputDesc& desc){
+  while(true){
+    std::cout << gFmt.BOLD << desc.prompt << gFmt.RESET;
   
-  if (obsecure) std::cout << gFmt.WHITE_BACKGROUND;
-  std::getline(std::cin, val);
-  if (obsecure) std::cout << gFmt.RESET;
+    if (desc.obsecure) std::cout << gFmt.WHITE_BACKGROUND;
+    std::string input;
+    std::getline(std::cin, input);
+    if (desc.obsecure) std::cout << gFmt.RESET;
+
+    auto error = desc.validate(input);
+    if(error.empty()){
+      desc.out = input;
+      break;
+    }
+
+    cli_error(error);
+  }
 }
 
 uint32_t cli_menu(const std::vector<const char*> &items) {
@@ -45,7 +57,7 @@ uint32_t cli_menu(const std::vector<const char*> &items) {
 
 bool cli_bool(const std::string& prompt, bool def){
   std::string str;
-  cli_input(prompt + " (y/n) ", str);
+  cli_input({prompt + " (y/n) ", str});
   if(str == "y") 
     return true;
   else if(str == "n") 

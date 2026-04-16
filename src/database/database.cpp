@@ -1,7 +1,7 @@
+#include <cstdint>
 #include <fstream>
 #include "database.hpp"
 
-// Initialization
 #define USERS_PATH  "Users.txt"
 #define VEHICLES_PATH "Vehicles.txt"
 #define APPLICATIONS_PATH "Applications.txt"
@@ -12,27 +12,99 @@ std::vector<Vehicle> gVehicles;
 std::vector<ParkingApplication> gApplications;
 std::vector<ParkingPass> gPasses;
 
-// Helpers
-static std::string ReadFile(std::string_view path);
-static void WriteToFile(std::string_view path, std::string_view content, bool append = true);
+static std::string ReadFile(const char* path);
+static void WriteToFile(const char* path, std::string_view content, bool append = true);
+static std::vector<std::string> ExtractAttributes(std::string_view content, size_t &i);
 
-// Loading
-std::vector<std::string> ReadAttributes(std::string_view content, size_t &i);
-static void LoadUsers();
-static void LoadVehicles();
-static void LoadApplications();
-static void LoadPasses();
+size_t db_load_users(){
+  std::string content = ReadFile(USERS_PATH);
+  size_t corrupted = 0;
 
-void db_load(eDatabaseEntity ent){
-  switch (ent) {
-  case eDatabaseEntity::User:         LoadUsers(); break;
-  case eDatabaseEntity::Vehicle:      LoadVehicles(); break;
-  case eDatabaseEntity::Application:  LoadApplications(); break;
-  case eDatabaseEntity::Pass:         LoadPasses(); break;
-  }
+  for(size_t i = 0; i < content.size(); ++i){
+    std::vector<std::string> attrs = ExtractAttributes(content, i);
+
+    try {
+      gUsers.push_back({ 
+        attrs[0], attrs[1], 
+        attrs[2], attrs[3], 
+        attrs[4],
+        static_cast<eUserStatus>(std::stoi(attrs[5])),
+        static_cast<eUserRole>(std::stoi(attrs[6]))
+      });
+    } catch(const std::exception&){
+      corrupted++;
+    }
+  } 
+
+  return corrupted;
 }
 
-// Adding Entry
+size_t db_load_vehicles(){
+  std::string content = ReadFile(VEHICLES_PATH);
+  size_t corrupted = 0;
+
+  for(size_t i = 0; i < content.size(); ++i){
+    std::vector<std::string> attrs = ExtractAttributes(content, i);
+
+    try {
+      gVehicles.push_back({attrs[0], attrs[1], attrs[2], attrs[3]});
+    } catch(const std::exception&){
+      corrupted++;
+    }
+  }
+
+  return corrupted;
+}
+
+size_t db_load_applications(){
+  std::string content = ReadFile(APPLICATIONS_PATH);
+  size_t corrupted = 0;
+
+  for(size_t i = 0; i < content.size(); ++i){
+    std::vector<std::string> attrs = ExtractAttributes(content, i);
+
+    try {
+      gApplications.push_back({ 
+        attrs[0], attrs[1], 
+        attrs[2], attrs[3], 
+        static_cast<ePassDuration>(std::stoi(attrs[4])), 
+        static_cast<uint32_t>(std::stoi(attrs[5])),
+        static_cast<uint32_t>(std::stoi(attrs[6])),
+        attrs[7],
+        static_cast<eApplicationStatus>(std::stoi(attrs[8])),
+      });
+    } catch(const std::exception&){
+      corrupted++;
+    }
+  }
+
+  return corrupted;
+}
+
+size_t db_load_passes() {
+  std::string content = ReadFile(PASSES_PATH);
+  size_t corrupted = 0;
+
+  for(size_t i = 0; i < content.size(); ++i){
+    std::vector<std::string> attrs = ExtractAttributes(content, i);
+
+    try {
+      gPasses.push_back({
+        attrs[0], attrs[1], attrs[2],
+        static_cast<ePassDuration>(std::stoi(attrs[3])),
+        static_cast<unsigned int>(std::stoi(attrs[4])),
+        static_cast<unsigned int>(std::stoi(attrs[5])),
+        static_cast<ePassStatus>(std::stoi(attrs[6])),
+      });
+    } catch(const std::exception&){
+      corrupted++;
+    }
+  }
+
+  return corrupted;
+}
+
+
 static std::string Parse(const User& user);
 static std::string Parse(const Vehicle& v);
 static std::string Parse(const ParkingPass& pass);
@@ -58,8 +130,6 @@ void db_add_entry(const ParkingPass& pass){
   gPasses.push_back(pass);
 }
 
-
-// Updating Entries
 void db_update_entry(const User& modified){
   std::string content = "";
   for(auto& user: gUsers){
@@ -73,17 +143,22 @@ void db_update_entry(const User& modified){
 
 void db_update_entry(const Vehicle& modified, bool del){
   std::string content = "";
-  for(auto& v: gVehicles){
-    if(v.LicensePlate == modified.LicensePlate){
-      if(del) continue;
-      else v = modified;
+  std::vector<Vehicle>::iterator toDelete;
+
+  for(auto it = gVehicles.begin(); it != gVehicles.end(); ++it){
+    if(it->LicensePlate == modified.LicensePlate){
+      if(del) 
+        toDelete = it;
+      else 
+        *it = modified;
     }
 
-    content += Parse(v);
+    content += Parse(*it);
   }
 
   WriteToFile(VEHICLES_PATH, content, false);
-  if(del) db_load(eDatabaseEntity::Vehicle);
+  if(del) 
+    gVehicles.erase(toDelete);
 }
 
 void db_update_entry(const ParkingApplication& modified){
@@ -181,13 +256,11 @@ std::vector<ParkingPass> db_match_entry(const ParkingPass& f, bool limitToOne){
 }
 
 
-
-// Helpers
-std::string ReadFile(std::string_view path){
-  std::ifstream file(path.data());
+std::string ReadFile(const char* path){
+  std::ifstream file(path);
 
   if(!file.is_open()){
-    WriteToFile(path.data(), "");
+    WriteToFile(path, "");
     return "";
   }
 
@@ -205,14 +278,13 @@ std::string ReadFile(std::string_view path){
   return res;
 }
 
-void WriteToFile(std::string_view path, std::string_view content, bool append){
-  std::ofstream file(path.data(), append ? std::ios_base::app : std::ios_base::trunc);
+void WriteToFile(const char* path, std::string_view content, bool append){
+  std::ofstream file(path, append ? std::ios_base::app : std::ios_base::trunc);
   file.write(content.data(), content.size());
   file.close();
 }
 
-// Loading
-std::vector<std::string> ReadAttributes(std::string_view content, size_t &i) {
+std::vector<std::string> ExtractAttributes(std::string_view content, size_t &i) {
   std::vector<std::string> res;
     
   size_t end = content.find(DB_ENTRY_DILM, i);
@@ -230,83 +302,8 @@ std::vector<std::string> ReadAttributes(std::string_view content, size_t &i) {
 
     section.remove_prefix(delim + 1);
   }
+
   return res;
-}
-
-
-static void LoadUsers(){
-  std::string content = ReadFile(USERS_PATH);
-  for(size_t i = 0; i < content.size(); ++i){
-    std::vector<std::string> attrs = ReadAttributes(content, i);
-
-    try {
-      User u{attrs[0], attrs[1], attrs[2], attrs[3], attrs[4]};
-      u.Status = static_cast<eUserStatus>(std::stoi(attrs[5]));
-      u.Role = static_cast<eUserRole>(std::stoi(attrs[6]));
-
-      gUsers.push_back(u);
-    } catch(const std::exception&){
-      // error
-    }
-  } 
-}
-
-static void LoadVehicles(){
-  std::string content = ReadFile(VEHICLES_PATH);
-  for(size_t i = 0; i < content.size(); ++i){
-    std::vector<std::string> attrs = ReadAttributes(content, i);
-
-    try {
-      Vehicle v{attrs[0], attrs[1], attrs[2], attrs[3]};
-      gVehicles.push_back(v);
-    } catch(const std::exception&){
-      // error
-    }
-  }
-}
-
-static void LoadApplications(){
-  std::string content = ReadFile(APPLICATIONS_PATH);
-  for(size_t i = 0; i < content.size(); ++i){
-    std::vector<std::string> attrs = ReadAttributes(content, i);
-
-    try {
-      ParkingApplication app{ 
-        attrs[0], attrs[1], 
-        attrs[2], attrs[3], 
-        static_cast<ePassDuration>(std::stoi(attrs[4])), 
-        static_cast<unsigned int>(std::stoi(attrs[5])),
-        static_cast<unsigned int>(std::stoi(attrs[6])),
-        attrs[7],
-        static_cast<eApplicationStatus>(std::stoi(attrs[8])),
-      };
-
-      gApplications.push_back(app);
-    } catch(const std::exception&){
-      // error
-    }
-  }
-}
-
-static void LoadPasses(){
-  std::string content = ReadFile(PASSES_PATH);
-  for(size_t i = 0; i < content.size(); ++i){
-    std::vector<std::string> attrs = ReadAttributes(content, i);
-
-    try {
-      ParkingPass pass{
-        attrs[0], attrs[1], attrs[2],
-        static_cast<ePassDuration>(std::stoi(attrs[3])),
-        static_cast<unsigned int>(std::stoi(attrs[4])),
-        static_cast<unsigned int>(std::stoi(attrs[5])),
-        static_cast<ePassStatus>(std::stoi(attrs[6])),
-      };
-
-      gPasses.push_back(pass);
-    } catch(const std::exception&){
-      // error
-    }
-  }
 }
 
 // Adding Entry

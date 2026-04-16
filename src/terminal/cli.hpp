@@ -2,16 +2,17 @@
 
 #include "formatter.hpp"
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <string>
 #include <vector>
 
 inline void cli_header(std::string_view text) {
-  std::cout << "\n" << gFmt.BOLD << gFmt.UNDERLINE << text << gFmt.RESET << "\n\n";
+  std::cout << '\n' << gFmt.BOLD << gFmt.UNDERLINE << text << gFmt.RESET << "\n\n";
 }
 
 inline void cli_subheader(std::string_view text){
-  std::cout << "\n" << gFmt.BOLD << text << gFmt.RESET << "\n";
+  std::cout << '\n' << gFmt.BOLD << text << gFmt.RESET << '\n';
 }
 
 inline void cli_separator(size_t length, char ch = '=') {
@@ -19,7 +20,8 @@ inline void cli_separator(size_t length, char ch = '=') {
 }
 
 inline void cli_error(std::string_view text) {
-  std::cout << gFmt.RED_BACKGROUND << gFmt.BOLD << "[Error] "<< text << gFmt.RESET << '\n';
+  std::cout << gFmt.RED_BACKGROUND << gFmt.BOLD << "[Error] " << text << gFmt.RESET << '\n';
+  std::cin.get();
 }
 
 inline void cli_field(std::string_view name, std::string_view value){
@@ -27,7 +29,15 @@ inline void cli_field(std::string_view name, std::string_view value){
 }
 
 void cli_clear();
-void cli_input(std::string_view prompt, std::string &val, bool obsecure = false);
 bool cli_bool(const std::string& prompt, bool def = true);
 uint32_t cli_menu(const std::vector<const char*> &items);
 void cli_table(const std::vector<const char*>& names, const std::vector<std::vector<std::string>>& values);
+
+struct InputDesc{
+  std::string_view prompt; 
+  std::string& out; 
+  bool obsecure = false; 
+  std::function<std::string(std::string_view)> validate = [](std::string_view){ return ""; };
+};
+
+void cli_input(const InputDesc& desc);
