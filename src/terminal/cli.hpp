@@ -8,9 +8,11 @@
 
 // Stateless CLI Elements
 #ifdef _WIN32
-#define cli_clear() system("cls")
+#define cli_clear() strlen(gFmt.CLEAR_TERMINAL) == 0 ? system("cls") : std::cout << gFmt.CLEAR_TERMINAL
 #else
-#define cli_clear() system("clear")
+#define cli_clear() \
+  do{ if(strlen(gFmt.CLEAR_TERMINAL) == 0) system("clear"); else std::cout << gFmt.CLEAR_TERMINAL; } \
+  while(0)
 #endif
 
 #define cli_header(content) std::cout << '\n' << gFmt.BOLD << gFmt.UNDERLINE << content << gFmt.RESET << "\n\n"
@@ -27,15 +29,15 @@ extern void cli_table(const std::vector<std::string> &names, const std::vector<s
 
 // Stateful CLI Elements
 extern void cli_confirm();
-extern bool cli_boolean(std::string_view prompt);
-extern void cli_input(std::string_view prompt, std::string& value);
+extern bool cli_boolean(const std::string& prompt);
+extern void cli_input(const std::string& prompt, std::string& value);
 extern unsigned int cli_menu(const std::vector<std::string> &items);
 
 // Helpers
-extern bool StringToInt(std::string_view str, int& out);
+extern bool StringToInt(const std::string& str, int& out);
 
 template <class _Tp>
-_Tp cli_input_valid(const std::string& prompt, std::function<std::string(std::string_view, _Tp&)> v) {
+_Tp cli_input_valid(const std::string& prompt, std::function<std::string(const std::string&, _Tp&)> v) {
     std::string input;
 
   while (true) {

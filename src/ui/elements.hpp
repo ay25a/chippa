@@ -11,10 +11,10 @@
 #define FOR_LOOP_BREAK() break
 #define FOR_LOOP_END() }
 
-extern std::string validate_password(std::string_view in, std::string& out);
-extern std::string validate_contact_number(std::string_view in, std::string& out);
-extern std::string validate_full_name(std::string_view in, std::string& out);
-extern std::string validate_age(std::string_view in, int& out);
+extern std::string validate_password(const std::string& in, std::string& out);
+extern std::string validate_contact_number(const std::string& in, std::string& out);
+extern std::string validate_full_name(const std::string& in, std::string& out);
+extern std::string validate_age(const std::string& in, int& out);
 
 // Authentication
 extern User gCurrentUser;
@@ -22,8 +22,16 @@ extern bool ui_authentication();
 extern User ui_login();
 extern User ui_register();
 
-// Menu
+// Student related Menu
+extern void ui_add_vehicle();
+extern void ui_delete_vehicle(const std::vector<Vehicle>& owned);
+extern void ui_vehicles(const User &user);
+
+extern void ui_passes(const User& user);
+
 extern void ui_student();
+
+//
 extern void ui_staff();
 
 
@@ -57,28 +65,34 @@ inline void ui_edit_profile(){
     return;
 
   bool modified = false;
-  if(modified = modified || !name.empty(); !name.empty()){
+  if(!name.empty()){
+    modified = true;
     name.resize(32);
     std::copy(name.begin(), name.end(), &gCurrentUser.fullname[0]);
   }
 
-  if(modified = modified || !contact.empty(); !contact.empty()){
+  if(!contact.empty()){
+    modified = true;
     contact.resize(12);
     std::copy(contact.begin(), contact.end(), &gCurrentUser.contactNumber[0]);
   }
 
-  if(modified = modified || !password.empty(); !password.empty()){
+  if(!password.empty()){
+    modified = true;
     password.resize(12);
     std::copy(password.begin(), password.end(), &gCurrentUser.password[0]);
   }
 
-  if(modified = modified || !faculty.empty(); !faculty.empty()){
+  if(!faculty.empty()){
+    modified = true;
     faculty.resize(10);
     std::copy(faculty.begin(), faculty.end(), &gCurrentUser.faculty[0]);
   }
 
-  if(modified = modified || age != 0; age != 0)
+  if(age != 0){
+    modified = true;
     gCurrentUser.age = age;
+  }
 
   if(modified)
     if(!db_update_record(gCurrentUser)){
@@ -107,4 +121,22 @@ inline void ui_profile(const User& user){
     }
   }
   FOR_LOOP_END()
+}
+
+constexpr const char* PASS_DURATION_STRING(ePassDuration d){
+  switch(d){
+    case ePassDuration::OneMonth: return "1 Month";
+    case ePassDuration::TwoMonths: return "2 Months";
+    case ePassDuration::ThreeMonths: return "3 Months";
+    default: return "Unknown";
+  }
+}
+
+constexpr const char* PASS_STATUS_STRING(ePassStatus s){
+  switch(s){
+    case ePassStatus::Active: return "Active";
+    case ePassStatus::Suspended: return "Suspended";
+    case ePassStatus::Expired: return "Expired";
+    default: return "Unknown";
+  }
 }

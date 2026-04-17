@@ -25,7 +25,7 @@ User ui_login(){
   cli_header("Login");
   
   
-  int userid = cli_input_valid<int>("User ID: ", [](std::string_view in, int& out) {
+  int userid = cli_input_valid<int>("User ID: ", [](const std::string& in, int& out) {
     return !StringToInt(in, out) ? "User id can only contain numbers!" : "";
   });
   
@@ -47,7 +47,7 @@ User ui_register(){
   cli_clear();
   cli_header("New User");
 
-  int userid = cli_input_valid<int>("User ID (Organization ID): ", [](std::string_view in, int& out) {
+  int userid = cli_input_valid<int>("User ID (Organization ID): ", [](const std::string& in, int& out) {
     if(!StringToInt(in, out)) 
       return "User id can only contain numbers!";
 
@@ -68,7 +68,7 @@ User ui_register(){
 
   cli_subheader("Faculty");
   auto choice = UI_FACULTY_MENU();
-  std::string_view faculty = C_FACULTIES[choice];
+  const std::string& faculty = C_FACULTIES[choice];
 
   cli_subheader("User Type");
   auto role = cli_menu({"Student", "Staff"}) + 1;
@@ -91,14 +91,14 @@ User ui_register(){
   return user;
 }
 
-std::string validate_password(std::string_view in, std::string &out){
+std::string validate_password(const std::string& in, std::string &out){
   if(in.size() < 5 || in.size() >= 12)
       return "Password needs to be from 5 to 11 characters!";
   out = in;
   return "";
 }
 
-std::string validate_contact_number(std::string_view in, std::string &out){
+std::string validate_contact_number(const std::string& in, std::string &out){
   int dummy = 0;
   if(!StringToInt(in, dummy) || in.size() != 10)
     return "Please enter valid contact number!";
@@ -106,14 +106,14 @@ std::string validate_contact_number(std::string_view in, std::string &out){
   return "";
 }
 
-std::string validate_full_name(std::string_view in, std::string &out){
+std::string validate_full_name(const std::string& in, std::string &out){
   if(in.size() < 3 || in.size() > 31)
     return "Name needs to be at least 3 letters and at most 31 letters!";
   out = in;
   return "";
 }
 
-std::string validate_age(std::string_view in, int &out){
+std::string validate_age(const std::string& in, int &out){
   if(!StringToInt(in, out))
     return "Age can only contain numbers!";
   return (out < 16 || out > 99) ? "Age should be between 16 and 99" : "";

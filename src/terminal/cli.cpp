@@ -1,7 +1,7 @@
 #include "cli.hpp"
 #include <iomanip>
 
-bool StringToInt(std::string_view str, int& out){
+bool StringToInt(const std::string& str, int& out){
   if(str.empty()) 
     return false;
   
@@ -10,7 +10,7 @@ bool StringToInt(std::string_view str, int& out){
       return false;
   }
 
-  out = std::stoi(str.data());
+  out = std::stoi(str);
   return true;
 }
 
@@ -21,7 +21,7 @@ void cli_confirm(){
 }
 
 
-bool cli_boolean(std::string_view prompt){
+bool cli_boolean(const std::string& prompt){
   std::string str;
   while(true){
     cli_input(std::string(prompt) + " (y/n) ", str);
@@ -34,7 +34,7 @@ bool cli_boolean(std::string_view prompt){
   }
 }
 
-void cli_input(std::string_view prompt, std::string& value){
+void cli_input(const std::string& prompt, std::string& value){
   std::cout << prompt;
   std::getline(std::cin, value);
 }

@@ -1,3 +1,11 @@
+/** @file entities.hpp
+ *  @brief Stores the Entites signatures that are going to be stored as records in the Database.
+ *
+ *  DESIGN OVERVIEW:
+ *  ================
+ *  This is a part of the Database module, all structs have fixed size, 
+ *  alignment, and padding in different compilers.
+ */
 #pragma once
 
 #include <cstring>
