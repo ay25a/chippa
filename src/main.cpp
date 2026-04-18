@@ -1,12 +1,11 @@
-#include "terminal/formatter.hpp"
-#include "ui/elements.hpp"
+#include "ui_elements.hpp"
 
-sANSIFormatter gFmt;
 User gCurrentUser = {};
+bool Fmt::Enabled = true;
 
 int main(int argc, char **argv) {
-  //if(!cli_bool("Does this text display correctly?"))
-  //  DisableFormatter();
+  // if(!cli_boolean("Does this text display correctly?"))
+  //  Fmt::Enabled = false;
 
   for(;;){
     if(ui_authentication()) 

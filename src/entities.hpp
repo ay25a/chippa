@@ -1,5 +1,5 @@
 /// @file entity.hpp
-/// Contains all the structs that represents a Database record
+/// @brief Contains all the structs that represents a database record
 ///
 /// IMPORTANT:
 /// These structs are written directly to binary files using their raw memory layout.
