@@ -2,3 +2,5 @@
 .vscode/
 build/
 .cache
+doxy-docs.conf
+documentation

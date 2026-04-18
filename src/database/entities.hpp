@@ -1,20 +1,31 @@
-/** @file entities.hpp
- *  @brief Stores the Entites signatures that are going to be stored as records in the Database.
- *
- *  DESIGN OVERVIEW:
- *  ================
- *  This is a part of the Database module, all structs have fixed size, 
- *  alignment, and padding in different compilers.
- */
+/// @file entity.hpp
+/// Contains all the structs that represents a Database record
+///
+/// IMPORTANT:
+/// These structs are written directly to binary files using their raw memory layout.
+/// Therefore:
+/// - Field order must NOT be changed
+/// - Field types and sizes must NOT be changed
+/// - Adding/removing fields will break existing data files
+///
+/// ENTITIES SPECIFICATIONS:
+/// - Entities should contain an integer `id` used for sorting and binary search.
+/// - Entities should contain a static string `FILE` used for database file path (ideally constexpr).
+/// - Entities should contain a `match` method with a parameter of the same type and returns a boolean, 
+///   used to deduce if the entity values match with the filter values.
+/// MATCH FUNCTION:
+/// The `match` function performs partial matching:
+/// - Fields with default values (0 or '\0') are ignored
+/// - Only explicitly set fields are compared
 #pragma once
 
 #include <cstring>
 #include <cstdint>
 
+// User
+constexpr const char* C_FACULTIES[] = {"LCK_FES", "FCI", "FAM", "FEd", "FCS", "MK_FMHS"};
 enum class eUserStatus: uint16_t { Unknown = 0, Active, Suspended };
 enum class eUserRole: uint16_t { Unknown = 0, Student, Staff };
-
-constexpr const char* C_FACULTIES[] = {"LCK_FES", "FCI", "FAM", "FEd", "FCS", "MK_FMHS"};
 
 struct User {
   static constexpr const char* FILE = "users.dat";
@@ -51,8 +62,8 @@ struct Vehicle {
   bool match(const Vehicle& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(f.userid != 0 && f.userid != userid) return false;
-    if(f.plate[0] != '\0' && strcmp(f.model, model) != 0) return false;
-    if(f.model[0] != '\0' && strcmp(f.plate, plate) != 0) return false;
+    if(f.plate[0] != '\0' && strcmp(f.plate, model) != 0) return false;
+    if(f.model[0] != '\0' && strcmp(f.model, plate) != 0) return false;
     return true;
   }
 };
@@ -87,7 +98,7 @@ enum class eApplicationStatus: uint16_t { Unknown = 0, Rejected, Completed, Pend
 struct ParkingApplication{
   static constexpr const char* FILE = "applications.dat";
   int id = 0;
-  int userid;
+  int userid = 0;
   int oldPassID = 0, newPassID = 0;
   int submissionDate = 0, closedDate = 0;
   ePassDuration duration = ePassDuration::Unknown;
