@@ -6,7 +6,7 @@ void ui_student() {
   cli_clear();
   cli_header("Welocme " << gCurrentUser.fullname << '!');
 
-  switch (cli_menu({"Student Profile", "Registered Vehicles", "Parking Passes", "Exit"})) {
+  switch (cli_menu({"Student Profile", "Registered Vehicles", "Parking Passes", "Applications", "Exit"})) {
     case 0:
       ui_profile(gCurrentUser);
       break;
@@ -17,6 +17,9 @@ void ui_student() {
       ui_passes(gCurrentUser);
       break;
     case 3:
+      ui_applications(gCurrentUser);
+      break;
+    case 4:
       exit(0);
   }
 }
@@ -62,8 +65,7 @@ void ui_add_vehicle() {
 
   std::hash<std::string> hasher;
   int id = static_cast<int>(hasher(plate)) + gCurrentUser.id;
-  auto index = db_find_by_id<Vehicle>(id, nullptr);
-  if(index != ENTRY_NOT_FOUND){
+  if(db_find_by_id<Vehicle>(id, nullptr)){
     cli_error("Vehicle already Exists!");
     cli_confirm();
     return;
@@ -103,7 +105,9 @@ void ui_delete_vehicle(const std::vector<Vehicle>& owned){
   }
 }
 
-void ui_passes(const User& user){
+
+
+void ui_applications(const User& user){
   FOR_LOOP_BEGIN()
   cli_clear();
   cli_header("My Parking Passes");

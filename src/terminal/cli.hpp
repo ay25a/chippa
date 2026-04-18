@@ -8,7 +8,8 @@
 
 // Stateless CLI Elements
 #ifdef _WIN32
-#define cli_clear() strlen(gFmt.CLEAR_TERMINAL) == 0 ? system("cls") : std::cout << gFmt.CLEAR_TERMINAL
+#define cli_clear() do{ if(strlen(gFmt.CLEAR_TERMINAL) == 0) system("cls"); else std::cout << gFmt.CLEAR_TERMINAL; } \
+  while(0)
 #else
 #define cli_clear() \
   do{ if(strlen(gFmt.CLEAR_TERMINAL) == 0) system("clear"); else std::cout << gFmt.CLEAR_TERMINAL; } \

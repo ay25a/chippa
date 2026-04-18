@@ -28,10 +28,10 @@ extern void ui_delete_vehicle(const std::vector<Vehicle>& owned);
 extern void ui_vehicles(const User &user);
 
 extern void ui_passes(const User& user);
+extern void ui_applications(const User& user);
 
 extern void ui_student();
 
-//
 extern void ui_staff();
 
 

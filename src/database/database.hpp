@@ -180,3 +180,18 @@ inline std::vector<ENTITY_TYPE> db_find(const ENTITY_TYPE& filter){
 
   return res;
 }
+
+/// @brief Returns a new id based on the last record id (Incremental ID)
+/// @return (last record id + 1) or 1 if there is no records
+template <class ENTITY_TYPE>
+inline int db_get_next_id(){
+  std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);
+  if(!f.is_open()) 
+    return 1;
+
+  const std::vector<ENTITY_TYPE> arr = db_get_records<ENTITY_TYPE>(f);
+  if(arr.empty())
+    return 1;
+
+  return arr.back().id + 1;
+}

@@ -32,15 +32,15 @@ User ui_login(){
   std::string password;
   cli_input("Password: ", password);
 
-  User found{};
-  int index = db_find_by_id<User>(userid, &found);
-  if(index == ENTRY_NOT_FOUND || strcmp(found.password, password.c_str()) != 0){
+  User user{};
+  bool found = db_find_by_id<User>(userid, &user);
+  if(!found || strcmp(user.password, password.c_str()) != 0){
     cli_error("Incorrect email or password!");
     cli_confirm();
     return {};
   }
 
-  return found;
+  return user;
 }
 
 User ui_register(){
@@ -54,8 +54,7 @@ User ui_register(){
     return in.size() < 5 ? "Invalid user id!" : "";
   });
 
-  int index = db_find_by_id<User>(userid, nullptr);
-  if(index != ENTRY_NOT_FOUND){
+  if(db_find_by_id<User>(userid, nullptr)){
     cli_error("User already exists! Try logging in...");
     cli_confirm();
     return {};
