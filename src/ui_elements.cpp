@@ -2,35 +2,15 @@
 #include "cli_core.hpp"
 #include "database.hpp"
 
-bool ui_authentication() {
+// **************************************
+// Authentication Related
+// **************************************
+
+bool ui_login(){
   cli_clear();
-  cli_header("Authentication");
-
-  switch (cli_menu({"Login", "Register", "Exit"})) {
-  case 0:   
-    gCurrentUser = ui_login();
-    break;
-  case 1:   
-    gCurrentUser = ui_register();
-    break;
-  default:  
-    exit(0);
-  }
-
-  return gCurrentUser.id != 0;
-}
-
-User ui_login(){
-  cli_clear();
-  cli_header("Login");
+  cli_header("Login to your Account");
   
-  int userid = std::stoi(validator("User ID: ", [](const std::string& in){
-    if(!is_integer(in))
-      return "User id can only contain numbers!";
-    return "";
-  }));
-
-  
+  int userid = std::stoi(get_valid_input("User ID: ", userid_validator));
   std::string password = cli_input("Password: ");
 
   User user{};
@@ -38,32 +18,28 @@ User ui_login(){
   if(!found || strcmp(user.password, password.c_str()) != 0){
     cli_error("Incorrect email or password!");
     cli_press_enter();
-    return {};
+    return false;
   }
 
-  return user;
+  gCurrentUser = user;
+  return true;
 }
 
-User ui_register(){
+bool ui_register(){
   cli_clear();
   cli_header("Create a User");
 
-  int userid = std::stoi(validator("User ID (Organization ID): ", [](const std::string& in) {
-    if(!is_integer(in) || in.size() < 4) 
-      return "User id should be at least 4 numbers, can cannot contain any letters";
-    return "";
-  }));
-
+  int userid = std::stoi(get_valid_input("User ID (Organization ID): ", userid_validator));
   if(db_find_by_id<User>(userid, nullptr)){
     cli_error("User already exists! Try logging in...");
     cli_press_enter();
-    return {};
+    return false;
   }
 
-  std::string password = validator("Password: ", validate_password);
-  std::string contact = validator("Contact Numer: ", validate_contact_number);
-  std::string name = validator("Full Name: ", validate_name);
-  int age = std::stoi(validator("Age: ", validate_age));
+  std::string password = get_valid_input("Password: ", password_validator);
+  std::string contact = get_valid_input("Contact Numer: ", contact_validator);
+  std::string name = get_valid_input("Full Name: ", name_validator);
+  int age = std::stoi(get_valid_input("Age: ", age_validator));
 
   cli_subheader("Faculty");
   auto choice = cli_menu({std::begin(C_FACULTIES), std::end(C_FACULTIES)});
@@ -72,7 +48,9 @@ User ui_register(){
   cli_subheader("User Type");
   auto role = cli_menu({"Student", "Staff"}) + 1;
 
-  User user {userid};
+  // Fill the user struct
+  User user{};
+  user.id = userid;
   std::copy(password.begin(), password.end(), &user.password[0]);
   std::copy(contact.begin(), contact.end(), &user.contactNumber[0]);
   std::copy(name.begin(), name.end(), &user.fullname[0]);
@@ -81,22 +59,39 @@ User ui_register(){
   user.status = eUserStatus::Active;
   user.role = static_cast<eUserRole>(role);
 
-  if(!db_add_record(user))
-    throw std::runtime_error("Unexpected Failure: Failed to add entry to Database");
-  
-  return user;
+  EXPECT(db_add_record(user));
+  gCurrentUser = user;
+  return true;
 }
 
-void ui_student() {
+// **************************************
+// Main Menu
+// **************************************
+
+static void InitStudent(){
+  ParkingPass filter{};
+  filter.status = ePassStatus::Active;
+  auto active_pass = db_find(filter);
+  
+  if(active_pass.size() == 0)
+    return;
+
+  auto days = get_days_betwen(active_pass[0].issueDate, date_to_int());
+  if(days <= 7)
+    cli_warning("Your pass is about to expire in " << days << " Days!");
+}
+
+void ui_student_menu() {
   cli_clear();
   cli_header("Welocme " << gCurrentUser.fullname << '!');
 
-  switch (cli_menu({"Student Profile", "Registered Vehicles", "Parking Passes", "Applications", "Exit"})) {
+  InitStudent();
+  switch (cli_menu({"My Profile", "My Vehicles", "My Passes", "My Applications", "Exit"})) {
     case 0:
-      ui_view_profile(gCurrentUser);
+      ui_student_view_profile();
       break;
     case 1:
-      ui_view_vehicles(gCurrentUser);
+      ui_student_view_vehicles();
       break;
     case 2:
       ui_view_passes(gCurrentUser);
@@ -109,128 +104,131 @@ void ui_student() {
   }
 }
 
-void ui_staff(){
+void ui_staff_menu(){
   cli_clear();
   cli_header("Welocme " << gCurrentUser.fullname << '!');
 }
 
-void ui_view_profile(const User& user){
-  for(;;){
-    cli_clear();
-    cli_header("Profile");
-    cli_field((user.role == eUserRole::Student ? "Student " : "Staff ") << "ID", user.id);
-    cli_field("Name", user.fullname);
-    cli_field("Age", user.age);
-    cli_field("Contact Number", user.contactNumber);
-    cli_field("Faculty", user.faculty);
-    cli_field("Status", (user.status == eUserStatus::Suspended ? "Suspended" : "Active"));
-    cli_field("Role", (user.role == eUserRole::Student ? "Student" : "Staff"));
+// **************************************
+// Profile
+// **************************************
 
-    if(user.id == gCurrentUser.id){
-      cli_separator(10);
-      switch(cli_menu({"Edit", "Back"})){
-        case 0: 
-          ui_edit_current_profile(); 
-          break;
-        case 1: 
-          return;
-      }
-    }
-  }
+// Shared
+
+void ui_view_profile_core(const User& user){
+  cli_clear();
+  cli_header("Profile");
+  cli_field((user.role == eUserRole::Student ? "Student " : "Staff ") << "ID", user.id);
+  cli_field("Name", user.fullname);
+  cli_field("Age", user.age);
+  cli_field("Contact Number", user.contactNumber);
+  cli_field("Faculty", user.faculty);
+  cli_field("Status", (user.status == eUserStatus::Suspended ? "Suspended" : "Active"));
+  cli_field("Role", (user.role == eUserRole::Student ? "Student" : "Staff"));
 }
 
 void ui_edit_current_profile(){
   cli_clear();
   cli_header("Edit Profile");
   
-  std::string name, contact, password, faculty;
-  int age = 0;
-
-  bool modified = false;
   switch (cli_menu({"Name", "Age", "Contact Number", "Password", "Faculty", "Back"})) {
-  case 0:
-    name = validator("New Name: ", validate_name);
-    modified = (name != gCurrentUser.fullname);
+  case 0:{
+    std::string name = get_valid_input("New Name: ", name_validator);
+    name.resize(32);
+
+    std::copy(name.begin(), name.end(), &gCurrentUser.fullname[0]);
     break;
-  case 1:
-    age = std::stoi(validator("New Age: ", validate_age));
-    modified = (age != gCurrentUser.age);
+  }
+  case 1:{
+    int age = std::stoi(get_valid_input("New Age: ", age_validator));
+
+    gCurrentUser.age = age;
     break;
-  case 2:
-    contact = validator("New Contact Number: ", validate_contact_number);
-    modified = (contact != gCurrentUser.contactNumber);
+  }
+  case 2: {
+    std::string contact = get_valid_input("New Contact Number: ", contact_validator);
+    contact.resize(12);
+    
+    std::copy(contact.begin(), contact.end(), &gCurrentUser.contactNumber[0]);
     break;
-  case 3:
-    password = validator("New Password: ", validate_password);
-    modified = (password != gCurrentUser.password);
+  }
+  case 3:{
+    std::string password = get_valid_input("New Password: ", password_validator);
+    password.resize(12);
+
+    std::copy(password.begin(), password.end(), &gCurrentUser.password[0]);
     break;
-  case 4:
-    faculty = C_FACULTIES[cli_menu({std::begin(C_FACULTIES), std::end(C_FACULTIES)})];
-    modified = (faculty != gCurrentUser.faculty);
+  }
+  case 4:{
+    std::string faculty = C_FACULTIES[cli_menu({std::begin(C_FACULTIES), std::end(C_FACULTIES)})];
+    faculty.resize(10);
+
+    std::copy(faculty.begin(), faculty.end(), &gCurrentUser.faculty[0]);
     break;
+  }
   case 5:
     return;
   }
 
-  if(!cli_boolean("Confirm changes?") || !modified)
+  if(!cli_boolean("Confirm changes?"))
     return;
 
-  if(!name.empty()){
-    name.resize(32);
-    std::copy(name.begin(), name.end(), &gCurrentUser.fullname[0]);
-  }
-
-  if(!contact.empty()){
-    contact.resize(12);
-    std::copy(contact.begin(), contact.end(), &gCurrentUser.contactNumber[0]);
-  }
-
-  if(!password.empty()){
-    password.resize(12);
-    std::copy(password.begin(), password.end(), &gCurrentUser.password[0]);
-  }
-
-  if(!faculty.empty()){
-    faculty.resize(10);
-    std::copy(faculty.begin(), faculty.end(), &gCurrentUser.faculty[0]);
-  }
-
-  if(age != 0)
-    gCurrentUser.age = age;
-  
-  if(!db_update_record(gCurrentUser))
-    throw std::runtime_error("Unexpected Error: Cannot update user!");
+  EXPECT(db_update_record(gCurrentUser));
 }
 
-void ui_view_vehicles(const User &user){
+// Role
+
+void ui_student_view_profile(){
   for(;;){
-    cli_clear();
-    cli_header("Vehicles");
-
-    auto vhs = db_find<Vehicle>({0, user.id});
-    cli_field("Registered vehicles", vhs.size());
-
-    if(!vhs.empty()){
-      std::vector<std::vector<std::string>> values;
-      for(const auto& v: vhs)
-        values.push_back({v.plate, v.model});
-
-      cli_table({"Plate", "Model"}, values);
-    }
-    else if(gCurrentUser.id == user.id)
-      cli_separator(10);
-
-    if(gCurrentUser.id != user.id) {
-      cli_press_enter();
+    ui_view_profile_core(gCurrentUser);
+    cli_separator(10);
+    switch(cli_menu({"Edit", "Back"})){
+    case 0: 
+      ui_edit_current_profile(); 
+      break;
+    case 1: 
       return;
     }
+  }
+}
 
+void ui_staff_view_profile(const User& user){}
+
+
+// **************************************
+// Vehicles
+// **************************************
+
+// Shared
+
+void ui_view_vehicles_core(const User& user){
+  auto vhs = db_find<Vehicle>({0, user.id});
+  cli_field("Registered vehicles", vhs.size());
+
+  if(!vhs.empty()){
+    std::vector<std::vector<std::string>> values;
+    for(const auto& v: vhs)
+      values.push_back({v.plate, v.model});
+
+    cli_table({"Plate", "Model"}, values);
+  }
+}
+
+// Student
+
+void ui_student_view_vehicles(const User &user){
+  for(;;){
+    cli_clear();
+    cli_header("My Vehicles");
+
+    ui_view_vehicles_core(gCurrentUser);
+    cli_separator(10);
     switch (cli_menu({"Register a Vehicle", "Delete a Vehicle", "Back"})) {
     case 0:
       ui_add_vehicle();
       break;
     case 1:
-      ui_delete_vehicle(vhs);
+      ui_delete_vehicle();
       break;
     case 2:
       return;
@@ -242,7 +240,7 @@ void ui_add_vehicle() {
   cli_clear();
   cli_header("Register a new Vehicle");
 
-  std::string plate = validator("License Plate (ex. AEB0194): ", [](const std::string& in){
+  std::string plate = get_valid_input("License Plate (ex. AEB0194): ", [](const std::string& in){
     if(in.size() != 7 || !is_integer(in.substr(3, 6)))
       return "Invalid license plate number";
     return "";
@@ -256,7 +254,7 @@ void ui_add_vehicle() {
     return;
   }
 
-  std::string model = validator("Model (company name.): ", [](const std::string& in){
+  std::string model = get_valid_input("Model (company name.): ", [](const std::string& in){
     if(in.size() < 2 || in.size() > 8)
       return "Car model length should be 2 to 8 characters";
     return "";
@@ -267,23 +265,36 @@ void ui_add_vehicle() {
   std::copy(plate.begin(), plate.end(), &vh.plate[0]);
   std::copy(model.begin(), model.end(), &vh.model[0]);
 
-  if(!db_add_record(vh))
-    throw std::runtime_error("Unexpcted Error: Failed to add a new Vehicle");
+  EXPECT(db_add_record(vh));
 }
 
-void ui_delete_vehicle(const std::vector<Vehicle>& userVehicles){
+void ui_delete_vehicle(){
   cli_clear();
-  std::vector<std::string> plates(userVehicles.size());
+  Vehicle filter{};
+  filter.userid = gCurrentUser.id;
+
+  auto vehciles = db_find(filter);
+  if(vehciles.empty()){
+    cli_text("Nothing here to delete...");
+    cli_press_enter();
+    return;
+  }
+
+  std::vector<std::string> plates(vehciles.size());
   for(size_t i = 0; i < plates.size(); ++i)
-    plates[i] = userVehicles[i].plate;
+    plates[i] = vehciles[i].plate;
 
   auto index = cli_menu(plates);
   if(!cli_boolean("Confirm deletion of " + plates[index] + "? "))
     return;
 
-  if(!db_delete_record<Vehicle>(userVehicles[index].id))
-    throw std::runtime_error("Unexpected Error: Couldn't delete a vehicle");
+  EXPECT(db_delete_record<Vehicle>(vehciles[index].id));
 }
+
+// Staff
+
+void ui_staff_view_vehicles(){}
+
 
 void ui_view_passes(const User& user){
   for(;;){
@@ -299,7 +310,7 @@ void ui_view_passes(const User& user){
       if(gCurrentUser.id == user.id){
         cli_text("You don't have any parking passes yet!");
         if(cli_boolean("Apply for a pass?")) 
-          return;
+          ui_new_application();
       }
       else{
         cli_text(gCurrentUser.fullname << " doesn't have any passes");
@@ -312,7 +323,7 @@ void ui_view_passes(const User& user){
       if(p.status == ePassStatus::Active){
         cli_table({"ID", "Issue Date", "Expiry Date", "Duration", "Status"}, {{
           std::to_string(p.id), std::to_string(p.issueDate), std::to_string(p.issueDate), 
-          enum_to_string(p.duration), enum_to_string(p.status)
+          enum_to_string(p.duration), status(p.status)
         }});
         break;
       }
@@ -329,7 +340,7 @@ void ui_view_passes(const User& user){
 
         values.push_back({
           std::to_string(p.id), std::to_string(p.issueDate), 
-          enum_to_string(p.duration), enum_to_string(p.status)
+          enum_to_string(p.duration), status(p.status)
         });
       }
 
@@ -394,3 +405,31 @@ void ui_view_applications(const User& user){
   }
 }
 
+void ui_new_application(){
+  cli_clear();
+  cli_header("New Application");
+
+  cli_subheader("Requested Pass Duration");
+  ePassDuration druation = static_cast<ePassDuration>(cli_menu({"1 Month", "2 Months", "3 Months"}));
+
+  if(!cli_boolean("The application will be sent for review by the staff. Confirm? "))
+    return;
+
+  auto passes = db_find(ParkingPass{0, gCurrentUser.id, 0, 0, ePassDuration::Unknown, ePassStatus::Active});
+  
+  ParkingApplication app{};
+  app.id = db_get_next_id<ParkingApplication>();
+  app.userid = gCurrentUser.id;
+  if(passes.size() != 0)
+    app.oldPassID = passes[0].id;
+  app.submissionDate = current_date_to_int();
+  app.closedDate = 0;
+  app.duration = druation;
+  app.status = eApplicationStatus::WaitingForReview;
+  
+  if(!db_add_record(app))
+    throw std::runtime_error("Unexpected Failure: Cannot add a new record!");
+
+  cli_text("Application Sent!");
+  cli_press_enter();
+}

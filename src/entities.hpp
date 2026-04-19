@@ -19,10 +19,12 @@
 /// - Only explicitly set fields are compared
 #pragma once
 
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 
-// User
+// **************************************
+// User Related
+// **************************************
 constexpr const char* C_FACULTIES[] = {"LCK_FES", "FCI", "FAM", "FEd", "FCS", "MK_FMHS"};
 enum class eUserStatus: uint16_t { Unknown = 0, Active, Suspended };
 enum class eUserRole: uint16_t { Unknown = 0, Student, Staff };
@@ -34,7 +36,7 @@ struct User {
   char contactNumber[12] = "";
   char fullname[32] = "";
   char faculty[10] = "";
-  unsigned short age = 0;
+  uint16_t age = 0;
   eUserStatus status = eUserStatus::Unknown;
   eUserRole role = eUserRole::Unknown;
 
@@ -51,7 +53,6 @@ struct User {
   }
 };
 
-// Vehicle
 struct Vehicle {
   static constexpr const char* FILE = "vehicles.dat";
   int id = 0;
@@ -68,31 +69,11 @@ struct Vehicle {
   }
 };
 
-// Parking Pass
+// **************************************
+// Parking Related
+// **************************************
 enum class ePassDuration: uint16_t { Unknown = 0, OneMonth, TwoMonths, ThreeMonths };
-enum class ePassStatus: uint16_t { Unknown = 0, Active, Suspended, Expired };
-
-struct ParkingPass{
-  static constexpr const char* FILE = "passes.dat";
-  int id = 0;
-  int userid = 0;
-  int appid = 0;
-  int issueDate = 0;
-  ePassDuration duration = ePassDuration::Unknown;
-  ePassStatus status = ePassStatus::Unknown; 
-
-  bool match(const ParkingPass& f) const {
-    if(f.id != 0 && f.id != id) return false;
-    if(f.userid != 0 && f.userid != userid) return false;
-    if(f.appid != 0 && f.appid != appid) return false;
-    if(f.issueDate != 0 && f.issueDate != issueDate) return false;
-    if(f.duration != ePassDuration::Unknown && f.duration != duration) return false;
-    if(f.status != ePassStatus::Unknown && f.status != status) return false;
-    return true;
-  }
-};
-
-// Parking Application
+enum class ePassStatus: uint16_t { Unknown = 0, Active, Expired };
 enum class eApplicationStatus: uint16_t { Unknown = 0, Rejected, Completed, PendingPayment, WaitingForReview };
 
 struct ParkingApplication{
@@ -113,6 +94,26 @@ struct ParkingApplication{
     if(f.closedDate != 0 && f.closedDate != closedDate) return false;
     if(f.duration != ePassDuration::Unknown && f.duration != duration) return false;
     if(f.status != eApplicationStatus::Unknown && f.status != status) return false;
+    return true;
+  }
+};
+
+struct ParkingPass{
+  static constexpr const char* FILE = "passes.dat";
+  int id = 0;
+  int userid = 0;
+  int appid = 0;
+  int issueDate = 0;
+  ePassDuration duration = ePassDuration::Unknown;
+  ePassStatus status = ePassStatus::Unknown; 
+
+  bool match(const ParkingPass& f) const {
+    if(f.id != 0 && f.id != id) return false;
+    if(f.userid != 0 && f.userid != userid) return false;
+    if(f.appid != 0 && f.appid != appid) return false;
+    if(f.issueDate != 0 && f.issueDate != issueDate) return false;
+    if(f.duration != ePassDuration::Unknown && f.duration != duration) return false;
+    if(f.status != ePassStatus::Unknown && f.status != status) return false;
     return true;
   }
 };
