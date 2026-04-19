@@ -102,16 +102,6 @@ inline void cli_clear() {
     std::cout << std::string(50, '\n');
 }
 
-/// @brief Prints a date from an int 'year-month-day'
-/// @param date integer representing the date to print
-/// @note The function could pretty much print incorrect results if the date
-/// param is not a valid date
-inline void cli_date(int date) {
-  std::cout << date / 10000 << "-" << std::setw(2) << std::setfill('0')
-            << (date / 100) % 100 << "-" << std::setw(2) << std::setfill('0')
-            << date % 100;
-}
-
 // **************************************
 // Input Output Elements
 // **************************************

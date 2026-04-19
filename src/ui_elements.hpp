@@ -63,19 +63,28 @@ extern void ui_student_view_vehicles();
 extern void ui_add_vehicle();
 extern void ui_delete_vehicle();
 
-// Staff Related
-extern void ui_staff_view_vehicles();
+// **************************************
+// Applications
+// **************************************
+
+extern void ui_view_applications(const std::vector<ParkingApplication>& apps);
+
+extern void ui_view_active_application(const std::vector<ParkingApplication> &apps);
+
+extern void ui_student_applications(const User& user);
+
+extern void ui_staff_view_applications();
 
 // **************************************
 // Passes
 // **************************************
 
-extern void ui_view_passes(const User& user);
+extern void ui_view_passes_core(const User &user);
+
+extern void ui_view_active_pass(const std::vector<ParkingPass>& passes);
 extern void ui_new_application();
-extern void ui_view_applications(const User& user);
+extern void ui_view_passes(const User& user);
 
-
-extern void ui_staff();
 
 // **************************************
 // Helpers
@@ -171,4 +180,12 @@ inline int get_days_betwen(int date1, int date2) {
 
   double seconds = std::difftime(t2, t1);
   return static_cast<int>(seconds / (60 * 60 * 24));
+}
+
+inline std::string date_to_string(int date){
+  std::stringstream ss;
+  ss  << date / 10000 << "-" << std::setw(2) << std::setfill('0')
+      << (date / 100) % 100 << "-" << std::setw(2) << std::setfill('0')
+      << date % 100;
+  return ss.str();
 }

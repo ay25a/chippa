@@ -94,10 +94,10 @@ void ui_student_menu() {
       ui_student_view_vehicles();
       break;
     case 2:
-      ui_view_passes(gCurrentUser);
+      //ui_view_passes(gCurrentUser);
       break;
     case 3:
-      ui_view_applications(gCurrentUser);
+      //ui_view_applications(gCurrentUser);
       break;
     case 4:
       exit(0);
@@ -216,7 +216,7 @@ void ui_view_vehicles_core(const User& user){
 
 // Student
 
-void ui_student_view_vehicles(const User &user){
+void ui_student_view_vehicles(){
   for(;;){
     cli_clear();
     cli_header("My Vehicles");
@@ -295,6 +295,108 @@ void ui_delete_vehicle(){
 
 void ui_staff_view_vehicles(){}
 
+// **************************************
+// Applications
+// **************************************
+/*
+void ui_view_applications(const std::vector<ParkingApplication>& apps){
+  std::vector<std::vector<std::string>> values;
+  for(const auto& app: apps){
+    values.push_back({
+      std::to_string(app.id), date_to_string(app.submissionDate),
+      app.closedDate == 0 ? "Ongoing" : date_to_string(app.closedDate),
+      eto_string(app.duration), eto_string(app.status)});
+  }
+
+  cli_table({"ID", "Submission Date", "Closed Date", "Duration", "Status"}, values);
+}
+
+void ui_view_active_application(){
+
+}
+
+void ui_student_applications(const User &user){
+  ParkingApplication filter{};
+  filter.userid = user.id;
+  const auto apps = db_find(filter);
+}
+
+void ui_student_view_applications(){
+  for(;;){
+    cli_clear();
+    cli_header("My Parking Pass Applications");
+
+    ParkingApplication filter{};
+    filter.userid = gCurrentUser.id;
+    const auto applications = db_find<ParkingApplication>(filter);
+    if(applications.empty()){
+      cli_text("You don't have any applications!");
+      cli_press_enter();
+      return;
+    }
+
+    ParkingApplication active = {};
+    for(const auto& app: applications)
+      if(app.status == eApplicationStatus::PendingPayment || app.status == eApplicationStatus::WaitingForReview)
+        active = app;
+
+    if(active.id != 0){
+      if(active.status == eApplicationStatus::PendingPayment)
+        cli_warning("You have a pending application waiting for payment!");
+
+      cli_table({"ID", "Submission Date", "Status"}, 
+        {{std::to_string(active.id), date_to_string(active.submissionDate), eto_string(active.status)}});
+    }
+  
+    cli_separator(10);
+    switch(cli_menu({"History", "Back"})){
+    case 0:
+      ui_view_applications_core(gCurrentUser);
+      break;
+    case 1: 
+      return;
+    }
+  }
+}
+
+void ui_staff_view_applications(){}
+
+// **************************************
+// Passes
+// **************************************
+
+void ui_view_passes_core(const User &user){
+
+}
+
+void ui_new_application(){
+  cli_clear();
+  cli_header("New Application");
+
+  cli_subheader("Requested Pass Duration");
+  ePassDuration druation = static_cast<ePassDuration>(cli_menu({"1 Month", "2 Months", "3 Months"}));
+
+  if(!cli_boolean("The application will be sent for review by the staff. Confirm? "))
+    return;
+
+  auto passes = db_find(ParkingPass{0, gCurrentUser.id, 0, 0, ePassDuration::Unknown, ePassStatus::Active});
+  
+  ParkingApplication app{};
+  app.id = db_get_next_id<ParkingApplication>();
+  app.userid = gCurrentUser.id;
+  if(passes.size() != 0)
+    app.oldPassID = passes[0].id;
+  app.submissionDate = current_date_to_int();
+  app.closedDate = 0;
+  app.duration = druation;
+  app.status = eApplicationStatus::WaitingForReview;
+  
+  if(!db_add_record(app))
+    throw std::runtime_error("Unexpected Failure: Cannot add a new record!");
+
+  cli_text("Application Sent!");
+  cli_press_enter();
+}
 
 void ui_view_passes(const User& user){
   for(;;){
@@ -352,84 +454,4 @@ void ui_view_passes(const User& user){
       return;
     }
   }
-}
-
-void ui_view_applications(const User& user){
-  for(;;){
-    cli_clear();
-
-    if(user.id == gCurrentUser.id)
-      cli_header("My Parking Pass Applications");
-    else
-     cli_header(user.fullname << "'s Parking Pass Applications");
-
-    auto applications = db_find<ParkingApplication>({0, user.id});
-    if(applications.empty()) {
-      if(gCurrentUser.id == user.id)
-        cli_text("You haven't made any application yet!");
-      else
-        cli_text(user.fullname << " hasn't made any applications");
-
-      cli_press_enter();
-      return;
-    }
-
-    for(const auto& app : applications){
-      if(app.status == eApplicationStatus::PendingPayment || app.status == eApplicationStatus::WaitingForReview){
-        cli_table({"Submission Date", "Duration", "Status"}, {{
-          std::to_string(app.submissionDate), enum_to_string(app.duration), enum_to_string(app.status)
-        }});
-        break;
-      }
-    }
-  
-    cli_separator(10);
-    switch(cli_menu({"View History", "Back"})){
-    case 0:{
-      cli_clear();
-      std::vector<std::vector<std::string>> values;
-      for(const auto& app: applications){
-        values.push_back({
-          std::to_string(app.id), std::to_string(app.submissionDate),
-          std::to_string(app.closedDate), enum_to_string(app.duration), 
-          enum_to_string(app.status)});
-      }
-
-      cli_table({"ID", "Submission Date", "Closed Date", "Duration", "Status"}, values);
-      cli_press_enter();
-      break;
-    }
-    case 1: 
-      return;
-    }
-  }
-}
-
-void ui_new_application(){
-  cli_clear();
-  cli_header("New Application");
-
-  cli_subheader("Requested Pass Duration");
-  ePassDuration druation = static_cast<ePassDuration>(cli_menu({"1 Month", "2 Months", "3 Months"}));
-
-  if(!cli_boolean("The application will be sent for review by the staff. Confirm? "))
-    return;
-
-  auto passes = db_find(ParkingPass{0, gCurrentUser.id, 0, 0, ePassDuration::Unknown, ePassStatus::Active});
-  
-  ParkingApplication app{};
-  app.id = db_get_next_id<ParkingApplication>();
-  app.userid = gCurrentUser.id;
-  if(passes.size() != 0)
-    app.oldPassID = passes[0].id;
-  app.submissionDate = current_date_to_int();
-  app.closedDate = 0;
-  app.duration = druation;
-  app.status = eApplicationStatus::WaitingForReview;
-  
-  if(!db_add_record(app))
-    throw std::runtime_error("Unexpected Failure: Cannot add a new record!");
-
-  cli_text("Application Sent!");
-  cli_press_enter();
-}
+}*/

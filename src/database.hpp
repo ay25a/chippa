@@ -59,8 +59,7 @@ inline std::vector<ENTITY_TYPE> &db_get_records(std::fstream &file) {
   // Number of records = Total bytes / Record size
   records.resize(fileSize / sizeof(ENTITY_TYPE));
 
-  if (records.empty())
-    file.read(reinterpret_cast<char *>(records.data()), records.size() * sizeof(ENTITY_TYPE));
+  file.read(reinterpret_cast<char *>(records.data()), records.size() * sizeof(ENTITY_TYPE));
 
   return records;
 }
