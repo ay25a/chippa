@@ -63,6 +63,8 @@ extern void ui_student_view_vehicles();
 extern void ui_add_vehicle();
 extern void ui_delete_vehicle();
 
+extern void ui_student_view_applications();
+
 // **************************************
 // Applications
 // **************************************

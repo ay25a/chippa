@@ -87,7 +87,7 @@ inline bool db_find_by_id(int id, ENTITY_TYPE *out) {
   auto it = std::lower_bound(records.begin(), records.end(), id,
                         [](const ENTITY_TYPE &ent, int v) { return ent.id < v; });
 
-  if (it != records.end() || it->id == id)
+  if (it == records.end() || it->id != id)
     return false;
 
   if (out != nullptr)
