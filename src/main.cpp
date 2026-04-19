@@ -53,9 +53,18 @@ void InitPasses() {
   std::vector<ParkingPass> modified;
   int currentDate = date_to_int();
 
+  auto duration_days = [&](ePassDuration duration){
+    switch(duration){
+      case ePassDuration::OneMonth:   return 30;
+      case ePassDuration::TwoMonths:  return 60;
+      case ePassDuration::ThreeMonths:return 90;
+      default:                        return 0;
+    }
+  };
+
   for(auto& p: passes){
-    int days = get_days_betwen(currentDate, p.issueDate);
-    if(days <= 0){
+    int elapsed = get_days_betwen(p.issueDate, currentDate);
+    if(elapsed >= duration_days(p.duration)){
       p.status = ePassStatus::Expired;
       modified.push_back(p);
     }

@@ -1,5 +1,8 @@
 /// @file ui_elements.hpp
-/// @brief Contains all Terminal pages for both students and staff
+/// @brief Terminal page declarations for student and staff console interactions.
+///
+/// This file exposes the login/register flows, profile pages, vehicle management,
+/// parking pass applications, and staff reporting screens used by the CLI.
 #pragma once
 
 #include <string>
@@ -69,13 +72,8 @@ extern void ui_student_view_applications();
 // Applications
 // **************************************
 
-extern void ui_view_applications(const std::vector<ParkingApplication>& apps);
-
-extern void ui_view_active_application(const std::vector<ParkingApplication> &apps);
-
-extern void ui_student_applications(const User& user);
-
-extern void ui_staff_view_applications();
+// Student and staff application helpers are implemented inside ui_elements.cpp
+// and do not require public declarations beyond the student view.
 
 // **************************************
 // Passes

@@ -69,17 +69,56 @@ bool ui_register(){
 // Main Menu
 // **************************************
 
-static void InitStudent(){
+static int ui_pass_duration_days(ePassDuration duration){
+  switch(duration){
+    case ePassDuration::OneMonth:   return 30;
+    case ePassDuration::TwoMonths:  return 60;
+    case ePassDuration::ThreeMonths:return 90;
+    default:                        return 0;
+  }
+}
+
+static bool ui_student_has_open_application(int userid){
+  ParkingApplication filter{};
+  filter.userid = userid;
+  auto applications = db_find<ParkingApplication>(filter);
+
+  for(const auto &app : applications){
+    if(app.status == eApplicationStatus::WaitingForReview ||
+       app.status == eApplicationStatus::PendingPayment)
+      return true;
+  }
+
+  return false;
+}
+
+static bool ui_student_has_active_pass(int userid){
   ParkingPass filter{};
+  filter.userid = userid;
   filter.status = ePassStatus::Active;
-  auto active_pass = db_find(filter);
-  
-  if(active_pass.size() == 0)
+  return !db_find<ParkingPass>(filter).empty();
+}
+
+static void InitStudent(){
+  if(ui_student_has_open_application(gCurrentUser.id)){
+    cli_warning("You have an open parking application waiting for review.");
+  }
+
+  ParkingPass filter{};
+  filter.userid = gCurrentUser.id;
+  filter.status = ePassStatus::Active;
+  auto active_passes = db_find(filter);
+
+  if(active_passes.empty())
     return;
 
-  auto days = get_days_betwen(active_pass[0].issueDate, date_to_int());
-  if(days <= 7)
-    cli_warning("Your pass is about to expire in " << days << " Days!");
+  int remainingDays = 0;
+  if(active_passes[0].duration != ePassDuration::Unknown)
+    remainingDays = ui_pass_duration_days(active_passes[0].duration) -
+      get_days_betwen(active_passes[0].issueDate, date_to_int());
+
+  if(remainingDays <= 7)
+    cli_warning("Your pass is about to expire in " << (remainingDays < 0 ? 0 : remainingDays) << " days.");
 }
 
 static std::vector<User> ui_staff_list_students(){
@@ -183,10 +222,14 @@ static void ui_staff_dashboard(){
 
 void ui_student_menu() {
   cli_clear();
-  cli_header("Welcome " << gCurrentUser.fullname << '!');
+  cli_header("Student Portal");
+  cli_field("Name", gCurrentUser.fullname);
+  cli_field("Faculty", gCurrentUser.faculty);
+  cli_separator(20);
 
   InitStudent();
-  switch (cli_menu({"My Profile", "My Vehicles", "My Passes", "My Applications", "Exit"})) {
+
+  switch (cli_menu({"Profile", "My Vehicles", "My Passes", "Applications", "Logout"})) {
     case 0:
       ui_student_view_profile();
       break;
@@ -729,11 +772,20 @@ void ui_student_view_applications(){
     ParkingApplication filter{};
     filter.userid = gCurrentUser.id;
     auto applications = db_find<ParkingApplication>(filter);
+    bool canSubmit = !ui_student_has_open_application(gCurrentUser.id) && !ui_student_has_active_pass(gCurrentUser.id);
 
     if(applications.empty()){
       cli_text("You don't have any applications yet.");
-      if(cli_boolean("Submit a new parking pass application?"))
-        ui_new_application();
+      if(canSubmit){
+        if(cli_boolean("Submit a new parking pass application?"))
+          ui_new_application();
+      } else if(ui_student_has_active_pass(gCurrentUser.id)){
+        cli_text("You already have an active pass. You may apply again only after it expires.");
+        cli_press_enter();
+      } else {
+        cli_text("You already have an open application waiting for review.");
+        cli_press_enter();
+      }
       return;
     }
 
@@ -752,17 +804,32 @@ void ui_student_view_applications(){
 
     cli_table({"ID", "Submitted", "Closed", "Duration", "Status"}, rows);
     cli_separator(10);
-    switch(cli_menu({"View Details", "Submit an Application", "Back"})){
-      case 0:{
-        size_t index = cli_menu(options);
-        ui_student_view_application_details(applications[index]);
-        break;
+    if(!canSubmit)
+      cli_warning("You cannot submit another application while one is still open or while you have an active pass.");
+
+    if(canSubmit){
+      switch(cli_menu({"View Details", "Submit an Application", "Back"})){
+        case 0:{
+          size_t index = cli_menu(options);
+          ui_student_view_application_details(applications[index]);
+          break;
+        }
+        case 1:
+          ui_new_application();
+          break;
+        case 2:
+          return;
       }
-      case 1:
-        ui_new_application();
-        break;
-      case 2:
-        return;
+    } else {
+      switch(cli_menu({"View Details", "Back"})){
+        case 0:{
+          size_t index = cli_menu(options);
+          ui_student_view_application_details(applications[index]);
+          break;
+        }
+        case 1:
+          return;
+      }
     }
   }
 }
@@ -811,6 +878,18 @@ void ui_view_passes_core(const User &user){
 }
 
 void ui_new_application(){
+  if(ui_student_has_open_application(gCurrentUser.id)){
+    cli_error("You already have an open application. Please wait until it is processed.");
+    cli_press_enter();
+    return;
+  }
+
+  if(ui_student_has_active_pass(gCurrentUser.id)){
+    cli_error("You already have an active pass. You may apply again only after it expires.");
+    cli_press_enter();
+    return;
+  }
+
   cli_clear();
   cli_header("New Application");
 
@@ -826,7 +905,7 @@ void ui_new_application(){
   app.id = db_get_next_id<ParkingApplication>();
   app.userid = gCurrentUser.id;
   if(!passes.empty())
-    app.oldPassID = passes[0].id;
+    app.oldPassID = passes.back().id;
   app.submissionDate = date_to_int();
   app.closedDate = 0;
   app.duration = duration;
@@ -879,16 +958,28 @@ void ui_view_passes(const User& user){
 
     cli_separator(10);
     if(gCurrentUser.id == user.id){
-      switch(cli_menu({"View Pass History", "Apply for a pass", "Back"})){
-        case 0:
-          ui_view_passes_history(passes);
-          cli_press_enter();
-          break;
-        case 1:
-          ui_new_application();
-          break;
-        case 2:
-          return;
+      if(!hasActive){
+        switch(cli_menu({"View Pass History", "Apply for a pass", "Back"})){
+          case 0:
+            ui_view_passes_history(passes);
+            cli_press_enter();
+            break;
+          case 1:
+            ui_new_application();
+            break;
+          case 2:
+            return;
+        }
+      } else {
+        cli_warning("You already have an active pass. New applications are not allowed until it expires.");
+        switch(cli_menu({"View Pass History", "Back"})){
+          case 0:
+            ui_view_passes_history(passes);
+            cli_press_enter();
+            break;
+          case 1:
+            return;
+        }
       }
     } else {
       switch(cli_menu({"View Pass History", "Back"})){
