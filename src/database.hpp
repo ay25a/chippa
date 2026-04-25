@@ -36,6 +36,7 @@
 
 #include <algorithm>
 #include <fstream>
+#include <functional>
 #include <vector>
 
 /// @brief Get a list (`vector`) of all existing records in the file.
@@ -207,7 +208,7 @@ inline bool db_update_record(const ENTITY_TYPE &mod) {
 /// for
 /// @return All records with values that match with the filter values
 template <class ENTITY_TYPE>
-inline std::vector<ENTITY_TYPE> db_find(const ENTITY_TYPE &filter) {
+inline std::vector<ENTITY_TYPE> db_find(const std::function<bool(const ENTITY_TYPE& e)> ok) {
   std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);
 
   // File doesn't exist; No records yet
@@ -220,7 +221,7 @@ inline std::vector<ENTITY_TYPE> db_find(const ENTITY_TYPE &filter) {
 
   std::vector<ENTITY_TYPE> res;
   for (const auto &rec : records) {
-    if (rec.match(filter))
+    if (ok(rec))
       res.push_back(rec);
   }
   return res;

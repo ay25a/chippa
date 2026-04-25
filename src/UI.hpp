@@ -51,11 +51,10 @@ extern void GenerateReport();
 // =============================================================================
 
 static void ViewStudentNotifications() {
-  ParkingPass filter{};
-  filter.userid = gCurrentUser.id;
-  filter.status = ePassStatus::Active;
+  auto passes = db_find<ParkingPass>([](const ParkingPass& p){
+    return p.userid == gCurrentUser.id && p.status == ePassStatus::Active;
+  });
 
-  std::vector<ParkingPass> passes = db_find(filter);
   if (passes.empty())
     return;
 
@@ -93,10 +92,9 @@ static ePageState StudentMenuPage() {
 }
 
 static void ViewStaffNotifications() {
-  ParkingApplication filter{};
-  filter.status = eApplicationStatus::WaitingForReview;
-
-  std::vector<ParkingApplication> apps = db_find(filter);
+  auto apps = db_find<ParkingApplication>([](const ParkingApplication& p){
+    return p.status == eApplicationStatus::WaitingForReview;
+  });
   if (apps.empty())
     return;
 
@@ -137,9 +135,9 @@ static ePageState StaffMenuPage() {
 }
 
 static void MenuPage() {
-  ParkingPass filter{};
-  filter.status = ePassStatus::Active;
-  std::vector<ParkingPass> passes = db_find<ParkingPass>(filter);
+  auto passes = db_find<ParkingPass>([](const ParkingPass& p){
+    return p.status == ePassStatus::Active;
+  });
   int currentDate = date::current();
 
   std::vector<ParkingPass> modified;
