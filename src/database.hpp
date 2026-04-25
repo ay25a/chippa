@@ -64,14 +64,19 @@ inline std::vector<ENTITY_TYPE> &db_get_records(std::fstream &file) {
   return records;
 }
 
+template <class ENTITY_TYPE>
+inline const std::vector<ENTITY_TYPE> &db_get_records() {
+  std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);
+  return db_get_records<ENTITY_TYPE>(f);
+}
+
 /// @brief Finds a record by id using binary search O(log n)
 /// @param id The id of the requested record
 /// @param out The `ENTITY_TYPE` variable pointer to write the found element
 /// into (can be a nullptr)
 /// @note If the `out` doesn't point to any variable (nullptr), the record won't
 /// be written to it
-/// @return a valid `ENTITY_TYPE` if found, and an default `ENTITY_TYPE` (with
-/// id = -1) if not found
+/// @return true if record is found, and false if not found
 template <class ENTITY_TYPE>
 inline bool db_find_by_id(int id, ENTITY_TYPE *out) {
   std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);

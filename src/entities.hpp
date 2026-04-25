@@ -1,5 +1,5 @@
 /// @file entity.hpp
-/// @brief Contains all the structs that represents a database record
+/// @brief Contains all the structs that represents a database record (aligned manually)
 ///
 /// IMPORTANT:
 /// These structs are written directly to binary files using their raw memory layout.
@@ -63,8 +63,8 @@ struct Vehicle {
   bool match(const Vehicle& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(f.userid != 0 && f.userid != userid) return false;
-    if(f.plate[0] != '\0' && strcmp(f.plate, model) != 0) return false;
-    if(f.model[0] != '\0' && strcmp(f.model, plate) != 0) return false;
+    if(f.plate[0] != '\0' && strcmp(f.plate, plate) != 0) return false;
+    if(f.model[0] != '\0' && strcmp(f.model, model) != 0) return false;
     return true;
   }
 };
@@ -75,12 +75,11 @@ struct Vehicle {
 enum class ePassDuration: uint16_t { Unknown = 0, OneMonth, TwoMonths, ThreeMonths };
 enum class ePassStatus: uint16_t { Unknown = 0, Active, Expired };
 enum class eApplicationStatus: uint16_t { Unknown = 0, Rejected, Completed, PendingPayment, WaitingForReview };
-
 struct ParkingApplication{
   static constexpr const char* FILE = "applications.dat";
   int id = 0;
   int userid = 0;
-  int oldPassID = 0, newPassID = 0;
+  int newPassID = 0;
   int submissionDate = 0, closedDate = 0;
   ePassDuration duration = ePassDuration::Unknown;
   eApplicationStatus status = eApplicationStatus::Unknown;
@@ -88,7 +87,6 @@ struct ParkingApplication{
   bool match(const ParkingApplication& f) const {
     if(f.id != 0 && f.id != id) return false;
     if(f.userid != 0 && f.userid != userid) return false;
-    if(f.oldPassID != 0 && f.oldPassID != oldPassID) return false;
     if(f.newPassID != 0 && f.newPassID != newPassID) return false;
     if(f.submissionDate != 0 && f.submissionDate != submissionDate) return false;
     if(f.closedDate != 0 && f.closedDate != closedDate) return false;
