@@ -1,4 +1,7 @@
 #include "UI.hpp"
+#include <map>
+#include <set>
+#include <algorithm>
 
 using std::string;
 using std::vector;
@@ -525,4 +528,127 @@ ePageState StudentsPage() {
   }
 
   return ePageState::Exit;
+}
+
+void GenerateReport(){
+  enum class eReportType { Total, Annual, Monthly };
+
+  const vector<string> menu { "Total Report", "Annual Report", "Monthly Report" };
+  cli_clear();
+  cli_header("Select Report Type");
+  int choice = cli_menu(menu);
+  eReportType reportType = static_cast<eReportType>(choice);
+
+  int currentDate = date::current();
+  int currentYear = currentDate / 10000;
+  int currentMonth = (currentDate / 100) % 100;
+
+  auto dateFilter = [&](int d) -> bool {
+    if (reportType == eReportType::Total) return true;
+    int y = d / 10000;
+    int m = (d / 100) % 100;
+    if (reportType == eReportType::Annual) 
+      return y == currentYear;
+    if (reportType == eReportType::Monthly) 
+      return y == currentYear && m == currentMonth;
+    return false;
+  };
+
+  // Get filtered passes
+  auto allPassesRaw = db_get_records<ParkingPass>();
+  std::vector<ParkingPass> allPasses;
+  for (const auto& p : allPassesRaw) {
+    if (dateFilter(p.issueDate)) allPasses.push_back(p);
+  }
+
+  // Get filtered applications
+  auto allAppsRaw = db_get_records<ParkingApplication>();
+  std::vector<ParkingApplication> allApps;
+  for (const auto& a : allAppsRaw) {
+    if (dateFilter(a.submissionDate)) allApps.push_back(a);
+  }
+
+  size_t totalPasses = allPasses.size();
+
+  // Total active passes
+  size_t totalActivePasses = 0;
+  for (const auto& p : allPasses) {
+    if (p.status == ePassStatus::Active) totalActivePasses++;
+  }
+
+  // Total suspended passes (Expired)
+  size_t totalSuspendedPasses = 0;
+  for (const auto& p : allPasses) {
+    if (p.status == ePassStatus::Expired) totalSuspendedPasses++;
+  }
+
+  // Total renewed parking passes
+  std::map<int, int> passCountPerUser;
+  for (const auto& p : allPasses) {
+    passCountPerUser[p.userid]++;
+  }
+  size_t totalRenewedPasses = 0;
+  for (const auto& pc : passCountPerUser) {
+    if (pc.second > 1) {
+      totalRenewedPasses += pc.second - 1;
+    }
+  }
+
+  // Average renewal interval
+  double totalInterval = 0.0;
+  size_t intervalCount = 0;
+  std::map<int, std::vector<ParkingPass>> userPasses;
+  for (const auto& p : allPasses) {
+    userPasses[p.userid].push_back(p);
+  }
+  for (auto& up : userPasses) {
+    auto& ps = up.second;
+    if (ps.size() > 1) {
+      std::sort(ps.begin(), ps.end(), [](const ParkingPass& a, const ParkingPass& b) {
+        return a.issueDate < b.issueDate;
+      });
+      for (size_t i = 1; i < ps.size(); ++i) {
+        totalInterval += date::days_between(ps[i-1].issueDate, ps[i].issueDate);
+        intervalCount++;
+      }
+    }
+  }
+  double avgRenewalInterval = intervalCount > 0 ? totalInterval / intervalCount : 0.0;
+
+  // Applications
+  size_t totalApplications = allApps.size();
+  size_t approvedApplications = 0;
+  size_t rejectedApplications = 0;
+  for (const auto& a : allApps) {
+    if (a.status == eApplicationStatus::Completed) approvedApplications++;
+    else if (a.status == eApplicationStatus::Rejected) rejectedApplications++;
+  }
+
+  // Average car utilization rate
+  std::set<int> usersWithPasses;
+  for (const auto& p : allPasses) {
+    usersWithPasses.insert(p.userid);
+  }
+  size_t usersWithPass = usersWithPasses.size();
+  size_t totalVehicles = db_get_records<Vehicle>().size(); // Vehicles don't have dates, so total
+  double avgUtilization = usersWithPass > 0 ? static_cast<double>(totalVehicles) / usersWithPass : 0.0;
+
+  // Display the report
+  cli_clear();
+  string header = "Parking System Report";
+  if (reportType == eReportType::Annual) header += " (Annual - " + std::to_string(currentYear) + ")";
+  else if (reportType == eReportType::Monthly) header += " (Monthly - " + std::to_string(currentYear) + "-" + (currentMonth < 10 ? "0" : "") + std::to_string(currentMonth) + ")";
+  cli_header(header);
+
+  cli_field("Total number of passes", totalPasses);
+  cli_field("Total number of active passes", totalActivePasses);
+  cli_field("Total number of expired passes", totalSuspendedPasses);
+  cli_field("Total number of renewed parking passes", totalRenewedPasses);
+  cli_field("Average renewal interval for parking passes (days)", avgRenewalInterval);
+  cli_field("Total number of car parking applications", totalApplications);
+  cli_field("Total number of approved car parking applications", approvedApplications);
+  cli_field("Total number of rejected car parking applications", rejectedApplications);
+  cli_field("Average car utilization rate (vehicles per user with pass)", avgUtilization);
+
+  cli_press_enter();
 }

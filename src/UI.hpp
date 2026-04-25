@@ -44,6 +44,8 @@ extern void EditProfilePage();
 
 extern ePageState StudentsPage();
 
+extern void GenerateReport();
+
 // =============================================================================
 // Main Menu Pages
 // =============================================================================
@@ -122,6 +124,7 @@ static ePageState StaffMenuPage() {
     while (PassesPage(nullptr) == ePageState::Continue);
     break;
   case 3:
+    GenerateReport();
     break;
   case 4:
     while (ProfilePage(gCurrentUser) == ePageState::Continue);
