@@ -21,7 +21,7 @@ void LoginPage() {
   cli_clear();
   cli_header("Login to your Account");
 
-  int userid = std::stoi(cli_valid_input("User ID: ", userid_validator));
+  int userid = std::stoi(cli_valid_input("User ID: ", utils::userid_validator));
   string password = cli_input("Password: ");
 
   if (login(userid, password))
@@ -38,22 +38,22 @@ void RegisterPage() {
   cli_clear();
   cli_header("Create a User");
 
-  user.id = std::stoi(cli_valid_input("Organization ID: ", userid_validator));
+  user.id = std::stoi(cli_valid_input("Organization ID: ", utils::userid_validator));
   if (exists(user.id)) {
     cli_error("User already exists! Try logging in...");
     return;
   }
 
-  string password = cli_valid_input("Password: ", password_validator);
+  string password = cli_valid_input("Password: ", utils::password_validator);
   std::copy(password.begin(), password.end(), &user.password[0]);
 
-  string contact = cli_valid_input("Contact Number: ", contact_validator);
+  string contact = cli_valid_input("Contact Number: ", utils::contact_validator);
   std::copy(contact.begin(), contact.end(), &user.contactNumber[0]);
 
-  string name = cli_valid_input("Full Name: ", name_validator);
-  std::copy(name.begin(), name.end(), &user.fullname[0]);
+  string name = cli_valid_input("Full Name: ", utils::name_validator);
+  std::copy(name.begin(), name.end(), &user.name[0]);
 
-  user.age = std::stoi(cli_valid_input("Age: ", age_validator));
+  user.age = std::stoi(cli_valid_input("Age: ", utils::age_validator));
 
   cli_subheader("Faculty");
   auto choice = cli_menu({std::begin(C_FACULTIES), std::end(C_FACULTIES)});
@@ -61,8 +61,7 @@ void RegisterPage() {
   std::copy(faculty.begin(), faculty.end(), &user.faculty[0]);
 
   cli_subheader("User Type");
-  auto role = cli_menu({"Student", "Staff"}) + 1;
-  user.role = static_cast<eUserRole>(role);
+  user.role = static_cast<eUserRole>(cli_menu({"Student", "Staff"}));
 
   EXPECT(db_add_record(user));
   gCurrentUser = user;
@@ -91,59 +90,40 @@ ePageState AuthenticationPage() {
 // Application Related Pages
 // **************************************
 
-vector<ParkingApplication *> FilterActiveApplications(vector<ParkingApplication> &apps) {
-  vector<ParkingApplication *> res;
-  if(is_staff()) {
-    for(auto& app: apps)
-      if(app.status == eApplicationStatus::WaitingForReview)
-        res.emplace_back(&app);
-
-    return res;
-  }
-
-  for (auto &app : apps) 
-    if (app.status == eApplicationStatus::PendingPayment || app.status == eApplicationStatus::WaitingForReview)
-      res.emplace_back(&app);
-
-  return res;
-}
-
-inline void ViewActiveApplications(const vector<ParkingApplication *> active) {
-  vector<vector<string>> values;
-  for (const auto &app : active) {
-    values.push_back({
-        std::to_string(app->id),
-        std::to_string(app->userid),
-        date::to_string(app->submissionDate),
-        utils::to_string(app->duration),
-        utils::to_string(app->status),
-    });
-  }
-
-  cli_table({"ID", "User ID", "Submission Date", "Requested Duration", "Status"}, values);
-}
-
 ePageState ApplicationsPage(const User *user) {
   const vector<string> menu { "View Application", "History", "Back"};
+  cli_clear();
+  cli_header("Applications");
 
   auto apps = db_find<ParkingApplication>([&user](const ParkingApplication& e){ 
     return !user || user->id == e.userid;
   });
-
-  auto active = FilterActiveApplications(apps);
 
   if (apps.size() == 0) {
     cli_error("No Applications found!");
     return ePageState::Exit;
   }
 
-  cli_clear();
-  cli_header("Applications");
+  auto active = db_find<ParkingApplication>([&user](const ParkingApplication& e){
+    return (!user || user->id == e.userid) && e.closedDate == 0 && 
+    (is_staff() ? e.status == eApplicationStatus::WaitingForReview : true);
+  });
 
-  if (active.empty())
-    cli_warning("No Active Applications");
-  else
-    ViewActiveApplications(active);
+  // View Active Applications
+  {
+    vector<std::array<string, 5>> values;
+    for (const auto &app : active) {
+      values.push_back({
+          std::to_string(app.id),
+          std::to_string(app.userid),
+          date::to_string(app.submissionDate),
+          std::to_string(app.duration) + " Days",
+          utils::to_string(app.status),
+      });
+    }
+
+    cli_table<5>({"ID", "User ID", "Submission Date", "Requested Duration", "Status"}, values);
+  }
 
   switch (cli_menu(menu)) {
   case 0: {
@@ -154,9 +134,9 @@ ePageState ApplicationsPage(const User *user) {
 
     vector<string> choices;
     for (const auto &app : active)
-      choices.emplace_back(std::to_string(app->id));
+      choices.emplace_back(std::to_string(app.id));
 
-    ApplicationDetailsPage(*active[cli_menu(choices)]);
+    ApplicationDetailsPage(active[cli_menu(choices)]);
     return ePageState::Continue;
   }
   case 1:
@@ -169,16 +149,16 @@ ePageState ApplicationsPage(const User *user) {
 
 void ApplicationDetailsPage(ParkingApplication app) {
   vector<string> menu = { "Back" };
-  if (is_staff())
+  if (is_staff() && app.status == eApplicationStatus::WaitingForReview)
     menu = { "Approve", "Back" };
-  else if (app.status == eApplicationStatus::PendingPayment)
+  else if (is_student() && app.status == eApplicationStatus::PendingPayment)
     menu = {"Pay", "Back"};
 
   cli_clear();
   cli_header("Application " << app.id);
   cli_field("Student ID", app.userid);
   cli_field("Submission Date", date::to_string(app.submissionDate));
-  cli_field("Duration", utils::to_string(app.duration));
+  cli_field("Duration", app.duration << " Days");
   cli_field("Status", utils::to_string(app.status));
 
   const auto approve = [&app](){
@@ -219,7 +199,7 @@ void ApplicationsHistoryPage(const vector<ParkingApplication> &apps) {
   cli_clear();
   cli_header("Applications History");
 
-  vector<vector<string>> values;
+  vector<std::array<string, 4>> values;
   for (const auto &app : apps)
     values.push_back({
         std::to_string(app.id),
@@ -229,22 +209,8 @@ void ApplicationsHistoryPage(const vector<ParkingApplication> &apps) {
     });
   
 
-  cli_table({"ID", "Submission Date", "Closed Date", "Status"}, values);
+  cli_table<4>({"ID", "Submission Date", "Closed Date", "Status"}, values);
   cli_press_enter();
-}
-
-inline void ViewActivePasses(const vector<ParkingPass> &passes) {
-  vector<vector<string>> values;
-  for (const auto &p : passes) 
-    values.push_back({
-        std::to_string(p.id),
-        std::to_string(p.userid),
-        date::to_string(p.issueDate),
-        std::to_string(date::days_until(p.issueDate, utils::to_int(p.duration))),
-        utils::to_string(p.duration),
-    });
-
-  cli_table({"ID", "User ID", "Issue Date", "Remaining", "Duration"}, values);
 }
 
 ePageState PassesPage(const User *user) {
@@ -252,26 +218,34 @@ ePageState PassesPage(const User *user) {
   cli_clear();
   cli_header("Passes");
 
-  auto active = db_find<ParkingPass>([&user](const ParkingPass& p){
+  auto activePasses = db_find<ParkingPass>([&user](const ParkingPass& p){
     return p.status == ePassStatus::Active && (!user ? true : user->id == p.userid);
   });
 
-  if (is_student() && active.empty()) {
-    cli_text("You don't have any active passes");
-
-    auto apps = db_find<ParkingApplication>([](const ParkingApplication& e){
-      return gCurrentUser.id == e.userid;
+  if (is_student() && activePasses.empty()) {
+    auto activeApps = db_find<ParkingApplication>([](const ParkingApplication& e){
+      return gCurrentUser.id == e.userid && e.closedDate == 0;
     });
 
-    bool activeApp = !FilterActiveApplications(apps).empty();
-    if (!activeApp && cli_boolean("Apply for a new Pass? ")) {
+    if (activeApps.empty() && cli_boolean("Apply for a new Pass? ")) {
       NewApplicationPage();
       return ePageState::Continue;
     }
-  } else if (is_staff() && active.empty())
-    cli_text("No Active passes in the system");
-  else
-    ViewActivePasses(active);
+  } 
+
+  {
+    vector<std::array<string, 5>> values;
+    for (const auto &p : activePasses) 
+      values.push_back({
+        std::to_string(p.id),
+        std::to_string(p.userid),
+        date::to_string(p.issueDate),
+        std::to_string(date::days_until(p.issueDate, p.duration)) + " Days",
+        std::to_string(p.duration) + " Days",
+      });
+
+    cli_table<5>({"ID", "User ID", "Issue Date", "Remaining", "Duration"}, values);
+  }
 
   if(cli_menu(menu) == 0){
     PassHistoryPage(user);
@@ -286,7 +260,7 @@ void NewApplicationPage() {
   cli_header("New Pass Application");
 
   cli_subheader("Requested Duration");
-  ePassDuration dur = static_cast<ePassDuration>(cli_menu({"1 Month", "2 Months", "3 Months"}) + 1);
+  uint16_t dur = C_PASS_DURATION[cli_menu({"1 Month", "2 Months", "3 Months"})];
 
   if (!cli_boolean("Confirm submitting the application for staff to review?"))
     return;
@@ -308,24 +282,22 @@ void PassHistoryPage(const User *user) {
   cli_clear();
   cli_header("Pass History");
 
-  ParkingPass filter{};
-  filter.userid = user ? user->id : 0;
   auto passes = db_find<ParkingPass>([&user](const ParkingPass& p){
     return !user || user->id == p.userid;
   });
 
-  vector<vector<string>> values;
+  vector<std::array<string, 5>> values;
   for (const auto &p : passes) {
     values.push_back({
         std::to_string(p.id),
         std::to_string(p.userid),
         date::to_string(p.issueDate),
-        utils::to_string(p.duration),
+        std::to_string(p.duration) + " Days",
         utils::to_string(p.status),
     });
   }
 
-  cli_table({"ID", "User ID", "Issue Date", "Duration", "Status"}, values);
+  cli_table<5>({"ID", "User ID", "Issue Date", "Duration", "Status"}, values);
   cli_press_enter();
 }
 
@@ -339,14 +311,11 @@ ePageState VehiclesPage() {
   });
   cli_field("Registered vehicles", vhs.size());
 
-  if (!vhs.empty()) {
-    vector<vector<string>> values;
-    for (const auto &v : vhs)
-      values.push_back({v.plate, v.model});
-
-    cli_table({"Plate", "Model"}, values);
-  }
-
+  vector<std::array<string, 2>> values;
+  for (const auto &v : vhs)
+    values.push_back({v.plate, v.model});
+  cli_table<2>({"Plate", "Model"}, values);
+  
   switch (cli_menu(menu)) {
   case 0:
     NewVehiclePage();
@@ -364,7 +333,7 @@ void NewVehiclePage() {
   cli_header("Add Vehicle");
 
   string plate = cli_valid_input("License Plate (ex. AEB019): ", [](const string &in) {
-        if (in.size() != 6 || !is_integer(in.substr(3, 5)))
+        if (in.size() != 6 || !utils::is_integer(in.substr(3, 5)))
           return "Invalid license plate number";
         return "";
       });
@@ -413,7 +382,7 @@ static void ChangeUserStatus(User user, eUserStatus status) {
   EXPECT(db_update_record(user));
 }
 
-ePageState ProfilePage(const User user) {
+ePageState ProfilePage(const User& user) {
   vector<string> menu { "Edit", "Back" };
   if (is_staff() && user.id != gCurrentUser.id) {
     if (user.status == eUserStatus::Active)
@@ -425,7 +394,7 @@ ePageState ProfilePage(const User user) {
   cli_clear();
   cli_header("Profile");
   cli_field(utils::to_string(user.role) << " ID", user.id);
-  cli_field("Name", user.fullname);
+  cli_field("Name", user.name);
   cli_field("Age", user.age);
   cli_field("Contact Number", user.contactNumber);
   cli_field("Faculty", user.faculty);
@@ -457,22 +426,22 @@ void EditProfilePage() {
 
   switch (cli_menu(menu)) {
   case 0: {
-    string name = cli_valid_input("New Name: ", name_validator);
-    copy(name, &newUser.fullname[0], 32);
+    string name = cli_valid_input("New Name: ", utils::name_validator);
+    copy(name, &newUser.name[0], 32);
     break;
   }
   case 1: {
-    int age = std::stoi(cli_valid_input("New Age: ", age_validator));
+    int age = std::stoi(cli_valid_input("New Age: ", utils::age_validator));
     newUser.age = age;
     break;
   }
   case 2: {
-    string contact = cli_valid_input("New Contact Number: ", contact_validator);
+    string contact = cli_valid_input("New Contact Number: ", utils::contact_validator);
     copy(contact, &newUser.contactNumber[0], 12);
     break;
   }
   case 3: {
-    string password = cli_valid_input("New Password: ", password_validator);
+    string password = cli_valid_input("New Password: ", utils::password_validator);
     copy(password, &newUser.password[0], 12);
     break;
   }
@@ -493,7 +462,6 @@ void EditProfilePage() {
   EXPECT(db_update_record(gCurrentUser));
 
   cli_success("User Information Updated!");
-  cli_press_enter();
 }
 
 ePageState StudentsPage() {
@@ -512,17 +480,17 @@ ePageState StudentsPage() {
   cli_clear();
   cli_header("Students");
 
-  vector<vector<string>> values;
+  vector<std::array<string, 4>> values;
   for (const auto &s : students) {
     values.push_back({
         std::to_string(s.id),
-        s.fullname,
+        s.name,
         s.faculty,
         utils::to_string(s.status),
     });
   }
 
-  cli_table({"ID", "Name", "Faculty", "Status"}, values);
+  cli_table<4>({"ID", "Name", "Faculty", "Status"}, values);
   cli_separator(20);
 
   if (cli_menu(menu) == 0) {

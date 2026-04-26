@@ -159,7 +159,7 @@ inline size_t cli_menu(const std::vector<std::string> &items) {
 
     int choice = -1;
     // Attempt to convert input to integer
-    if (is_integer(input))
+    if (utils::is_integer(input))
       choice = std::stoi(input);
 
     // Validate choice is within range
@@ -171,10 +171,12 @@ inline size_t cli_menu(const std::vector<std::string> &items) {
 }
 
 /// @brief Prints a single row of a table with specified column widths
-/// @param widths Vector of widths for each column
-/// @param row Vector of strings for each cell in the row
+/// @tparam The size of table columns
+/// @param widths array of widths for each column
+/// @param row array of strings for each cell in the row
+template <size_t ColumnSize>
 inline void 
-cli_table_row(const std::vector<size_t> &widths, const std::vector<std::string> &row) {
+cli_table_row(const std::array<size_t, ColumnSize> &widths, const std::array<std::string, ColumnSize> &row) {
   // Print each cell with left alignment and 2-space padding
   for (size_t i = 0; i < row.size(); ++i)
     std::cout << std::left << std::setw(widths[i] + 2) << row[i];
@@ -183,12 +185,14 @@ cli_table_row(const std::vector<size_t> &widths, const std::vector<std::string> 
 }
 
 /// @brief Prints a formatted table with headers and data rows
-/// @param cols Vector of column header strings
-/// @param rows Vector of rows, where each row is a vector of cell strings
+/// @tparam The size of table columns
+/// @param cols array of column header strings
+/// @param rows Vector of rows, where each row is an array of cell strings
 /// @note Automatically calculates column widths based on content
+template <size_t ColumnSize>
 inline void 
-cli_table(const std::vector<std::string> &cols, const std::vector<std::vector<std::string>> &rows) {
-  std::vector<size_t> widths(cols.size(), 0);
+cli_table(const std::array<std::string, ColumnSize> &cols, const std::vector<std::array<std::string, ColumnSize>> &rows) {
+  std::array<size_t, ColumnSize> widths;
   // Initialize widths with header lengths
   for (size_t i = 0; i < cols.size(); ++i)
     widths[i] = cols[i].size();
@@ -216,12 +220,16 @@ cli_table(const std::vector<std::string> &cols, const std::vector<std::vector<st
   cli_separator(total, '-');
 }
 
+/// @brief Loops until the user inputs a valid input
+/// @param prompt a Prompt to print for the user
+/// @param validator a Function that returns an error message if input is invalid
+/// @return a Valid input
 inline std::string 
-cli_valid_input(const std::string &prompt, std::function<std::string(const std::string &)> validate) {
+cli_valid_input(const std::string &prompt, std::function<std::string(const std::string &)> validator) {
   for (;;) {
     std::string in = cli_input(prompt);
 
-    std::string error = validate(in);
+    std::string error = validator(in);
     if (error.empty())
       return in;
 

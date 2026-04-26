@@ -43,28 +43,35 @@
 /// @param file is an open `std::fstream` to read from.
 /// @return reference to the local static `vector` containing the records.
 /// @note The vector will be created once per runtime (`static`) for each
-/// record type; Therefore, data will be loaded once O(n) and cached; Therefore,
-/// operations will be done on the vector reference then synced to the file
+/// record type; Therefore, data will be loaded once O(n) and cached.
+/// Operations will be done on the vector reference then synced to the file
 template <class ENTITY_TYPE>
 inline std::vector<ENTITY_TYPE> &db_get_records(std::fstream &file) {
   static std::vector<ENTITY_TYPE> records;
 
   // If the vector contain records, then no need to re-read the file
-  if(!records.empty())
+  // or if the file is not open, then return the empty vector
+  if(!records.empty() || !file.is_open())
     return records;
 
   file.seekg(0, std::ios_base::end);
   size_t fileSize = static_cast<size_t>(file.tellg());
   file.seekg(0, std::ios_base::beg);
 
+  // File is corrupted, since file size should be multiples of
+  // `ENTITY_TYPE` size
+  if (fileSize % sizeof(ENTITY_TYPE) != 0)
+    throw std::runtime_error("Database files had been tampered with! please delete the files");
+  
   // Number of records = Total bytes / Record size
   records.resize(fileSize / sizeof(ENTITY_TYPE));
-
   file.read(reinterpret_cast<char *>(records.data()), records.size() * sizeof(ENTITY_TYPE));
 
   return records;
 }
 
+/// @brief Return an unmodifiable reference to the cached records
+/// @return const reference to `vector` containing the records.
 template <class ENTITY_TYPE>
 inline const std::vector<ENTITY_TYPE> &db_get_records() {
   std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);
@@ -73,23 +80,15 @@ inline const std::vector<ENTITY_TYPE> &db_get_records() {
 
 /// @brief Finds a record by id using binary search O(log n)
 /// @param id The id of the requested record
-/// @param out The `ENTITY_TYPE` variable pointer to write the found element
-/// into (can be a nullptr)
-/// @note If the `out` doesn't point to any variable (nullptr), the record won't
-/// be written to it
+/// @param out The variable pointer to write the found record into (can be a nullptr)
 /// @return true if record is found, and false if not found
 template <class ENTITY_TYPE>
 inline bool db_find_by_id(int id, ENTITY_TYPE *out) {
-  std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);
-
-  // File doesn't exist; No records yet
-  if (!f.is_open())
-    return false;
-
-  const std::vector<ENTITY_TYPE>& records = db_get_records<ENTITY_TYPE>(f);
+  const std::vector<ENTITY_TYPE>& records = db_get_records<ENTITY_TYPE>();
   if (records.size() == 0)
     return false;
 
+  // Binary search
   auto it = std::lower_bound(records.begin(), records.end(), id,
                         [](const ENTITY_TYPE &ent, int v) { return ent.id < v; });
 
@@ -134,6 +133,7 @@ inline bool db_add_record(const ENTITY_TYPE &rec) {
   // Move the cursor to the beginning of the file and override it
   f.seekp(0);
   f.write(reinterpret_cast<char *>(records.data()), records.size() * sizeof(ENTITY_TYPE));
+  f.close();
 
   return true;
 }
@@ -167,22 +167,21 @@ inline bool db_delete_record(int id) {
   // all its content. Mainly done because the new records size is less than the
   // exisiting records size (If wrote normally, last record will be duplicated)
   f.close();
-  f.open(ENTITY_TYPE::FILE, std::ios_base::trunc | std::ios_base::out);
-  f.write(reinterpret_cast<char *>(records.data()),
-          records.size() * sizeof(ENTITY_TYPE));
+  f.open(ENTITY_TYPE::FILE, std::ios_base::trunc | std::ios_base::out | std::ios_base::binary);
+  f.write(reinterpret_cast<char *>(records.data()), records.size() * sizeof(ENTITY_TYPE));
+  f.close();
 
   return true;
 }
 
 /// @brief Updates a record using the record.id
-/// @param mod The modified record entity to replace the old one (must match the
-/// id)
+/// @param mod The modified record (must match the id)
 /// @return true if updated, and false if nothing updated
 template <class ENTITY_TYPE>
 inline bool db_update_record(const ENTITY_TYPE &mod) {
   std::fstream f(ENTITY_TYPE::FILE, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
   
-  // File doesn't exist; No records yet!
+  // File doesn't exist; No records
   if (!f.is_open())
     return false;
 
@@ -203,27 +202,21 @@ inline bool db_update_record(const ENTITY_TYPE &mod) {
   return true;
 }
 
-/// @brief Finds a record based on a filter using linear search O(n)
-/// @param filter an `ENTITY_TYPE` instance with the required values to search
-/// for
-/// @return All records with values that match with the filter values
+/// @brief Finds a record based on a predicate using linear search O(n)
+/// @param pred a predicate function that takes `ENTITY_TYPE` record as a parameter,
+/// returning true if the record matches, and false if doesn't match
+/// @return All records with values that match with the predicate
 template <class ENTITY_TYPE>
-inline std::vector<ENTITY_TYPE> db_find(const std::function<bool(const ENTITY_TYPE& e)> ok) {
-  std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);
+inline std::vector<ENTITY_TYPE> db_find(const std::function<bool(const ENTITY_TYPE& e)> pred) {
+  const std::vector<ENTITY_TYPE>& records = db_get_records<ENTITY_TYPE>();
 
-  // File doesn't exist; No records yet
-  if (!f.is_open())
-    return {};
-
-  const std::vector<ENTITY_TYPE>& records = db_get_records<ENTITY_TYPE>(f);
-  if(records.empty())
-    return {};
-
+  // Match using the predicate function
   std::vector<ENTITY_TYPE> res;
   for (const auto &rec : records) {
-    if (ok(rec))
+    if (pred(rec))
       res.push_back(rec);
   }
+
   return res;
 }
 
@@ -231,13 +224,7 @@ inline std::vector<ENTITY_TYPE> db_find(const std::function<bool(const ENTITY_TY
 /// @return (last record id + 1) or 1 if there is no records
 template <class ENTITY_TYPE> 
 inline int db_get_next_id() {
-  std::fstream f(ENTITY_TYPE::FILE, std::ios_base::binary | std::ios_base::in);
-
-  // File doesn't exist; No records yet
-  if (!f.is_open()) 
-    return 1;
-
-  const std::vector<ENTITY_TYPE>& records = db_get_records<ENTITY_TYPE>(f);
+  const std::vector<ENTITY_TYPE>& records = db_get_records<ENTITY_TYPE>();
   if (records.empty()) 
     return 1;
 

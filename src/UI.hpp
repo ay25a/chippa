@@ -1,19 +1,23 @@
+/// @file UI.hpp
+/// @brief Contains all UI elements and Pages
 #pragma once
 
 #include "cli_core.hpp"
 #include "database.hpp"
 #include "entities.hpp"
 
+using utils::ePageState;
+
 /// @brief The current active user.
 /// @note Should be set as a global variable in `main.cpp`.
 extern User gCurrentUser;
-
+ 
 const inline bool is_staff(){ return gCurrentUser.role == eUserRole::Staff; }
 const inline bool is_student(){ return gCurrentUser.role == eUserRole::Student; }
 
-//*******************************************
+// *******************************************
 // Auth
-//*******************************************
+// *******************************************
 
 extern void LoginPage();
 extern void RegisterPage();
@@ -39,7 +43,7 @@ extern ePageState VehiclesPage();
 extern void NewVehiclePage();
 extern void RemoveVehiclePage(const std::vector<Vehicle> &vehicles);
 
-extern ePageState ProfilePage(const User user);
+extern ePageState ProfilePage(const User& user);
 extern void EditProfilePage();
 
 extern ePageState StudentsPage();
@@ -50,16 +54,15 @@ extern void GenerateReport();
 // Main Menu Pages
 // =============================================================================
 
+/// @brief Prints a warning if student's pass is about to expire in 7 days
 static void ViewStudentNotifications() {
-  auto passes = db_find<ParkingPass>([](const ParkingPass& p){
-    return p.userid == gCurrentUser.id && p.status == ePassStatus::Active;
+  int remaining = 0;
+  auto passes = db_find<ParkingPass>([&remaining](const ParkingPass& p){
+    remaining = date::days_until(p.issueDate, p.duration);
+    return p.userid == gCurrentUser.id && p.status == ePassStatus::Active && remaining <= 7;
   });
 
-  if (passes.empty())
-    return;
-
-  int remaining = date::days_until(passes[0].issueDate, utils::to_int(passes[0].duration));
-  if (remaining <= 7)
+  if (!passes.empty())
     cli_warning("Your pass is about to expire in " << remaining << " Days!");
 }
 
@@ -68,7 +71,7 @@ static ePageState StudentMenuPage() {
     "Parking Pass", "Applications", "My Vehicles", "My Profile", "Exit" };
 
   cli_clear();
-  cli_field(gCurrentUser.fullname << "\t\t", gCurrentUser.faculty);
+  cli_header(gCurrentUser.name << "\t\t" << gCurrentUser.faculty);
   ViewStudentNotifications();
 
   switch (cli_menu(menu)) {
@@ -91,14 +94,14 @@ static ePageState StudentMenuPage() {
   return ePageState::Continue;
 }
 
+/// @brief Prints a warning with the amount of pending applications
 static void ViewStaffNotifications() {
   auto apps = db_find<ParkingApplication>([](const ParkingApplication& p){
     return p.status == eApplicationStatus::WaitingForReview;
   });
-  if (apps.empty())
-    return;
 
-  cli_warning("There is " << apps.size() << " pending applications");
+  if (!apps.empty())
+    cli_warning("There is " << apps.size() << " pending applications");
 }
 
 static ePageState StaffMenuPage() {
@@ -107,8 +110,7 @@ static ePageState StaffMenuPage() {
     "Generate Report", "My Profile", "Exit"};
 
   cli_clear();
-  cli_header("Dashboard");
-  cli_field(gCurrentUser.fullname << "\t\t", gCurrentUser.faculty);
+  cli_header(gCurrentUser.name << "\t\t" << gCurrentUser.faculty);
   ViewStaffNotifications();
 
   switch (cli_menu(menu)) {
@@ -134,31 +136,26 @@ static ePageState StaffMenuPage() {
   return ePageState::Continue;
 }
 
+/// @brief Refereshes the Passes expiry, then prints a menu based on
+/// the logged in user's role
 static void MenuPage() {
-  auto passes = db_find<ParkingPass>([](const ParkingPass& p){
-    return p.status == ePassStatus::Active;
-  });
   int currentDate = date::current();
 
-  std::vector<ParkingPass> modified;
-  for (auto &p : passes) {
+  auto expired = db_find<ParkingPass>([&currentDate](const ParkingPass& p){
     int elapsed = date::days_between(p.issueDate, currentDate);
-    if (elapsed >= utils::to_int(p.duration)) {
-      p.status = ePassStatus::Expired;
-      modified.push_back(p);
-    }
+
+    return p.status == ePassStatus::Active && elapsed >= p.duration;
+  });
+
+
+  for (const auto &p : expired)
+    EXPECT(db_update_record(p));
+
+  if (is_student() && gCurrentUser.status == eUserStatus::Suspended) {
+    cli_error("Your account has been suspended!");
+    return;
   }
 
-  for (const auto &mod : modified)
-    EXPECT(db_update_record(mod));
-
-  if (gCurrentUser.role == eUserRole::Student) {
-    if (gCurrentUser.status == eUserStatus::Suspended) {
-      cli_error("Your account has been suspended!");
-      return;
-    }
-
-    while (StudentMenuPage() == ePageState::Continue);
-  } else
-    while (StaffMenuPage() == ePageState::Continue);
+  while (is_student() && StudentMenuPage() == ePageState::Continue);
+  while (is_staff() && StaffMenuPage() == ePageState::Continue);
 }
