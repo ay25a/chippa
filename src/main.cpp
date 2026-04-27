@@ -3,7 +3,7 @@
 User gCurrentUser = {};
 bool Fmt::Enabled = true;
 
-int main(int argc, char **argv) {
+int main(void) {
   if(!cli_boolean("Does this text display correctly?"))
     Fmt::Enabled = false;
 

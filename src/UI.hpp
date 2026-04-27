@@ -150,17 +150,15 @@ static ePageState StaffMenuPage() {
 /// @brief Refereshes the Passes expiry, then prints a menu based on
 /// the logged in user's role
 static void MenuPage() {
-  int currentDate = date::current();
-
-  auto expired = db_find<ParkingPass>([&currentDate](const ParkingPass& p){
-    int elapsed = date::days_between(p.issueDate, currentDate);
-
-    return p.status == ePassStatus::Active && elapsed >= p.duration;
+  auto expired = db_find<ParkingPass>([](const ParkingPass& p){
+    return p.status == ePassStatus::Active && date::days_until(p.issueDate, p.duration) <= 0;
   });
 
 
-  for (const auto &p : expired)
+  for (auto &p : expired){
+    p.status = ePassStatus::Expired;
     EXPECT(db_update_record(p));
+  }
 
   if (is_student() && gCurrentUser.status == eUserStatus::Suspended) {
     cli_error("Your account has been suspended!");
