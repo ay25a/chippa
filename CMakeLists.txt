@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 14)
 
 set(SOURCES 
 ${CMAKE_SOURCE_DIR}/src/main.cpp
+${CMAKE_SOURCE_DIR}/src/seed_database.cpp
 ${CMAKE_SOURCE_DIR}/src/UI.cpp
 )
 

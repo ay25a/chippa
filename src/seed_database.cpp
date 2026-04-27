@@ -8,17 +8,15 @@
 #include <unordered_set>
 #include <vector>
 
-namespace date {
-
-void to_ymd(int date, int &y, int &m, int &d) {
+static void to_ymd(int date, int &y, int &m, int &d) {
   y = date / 10000;
   m = (date / 100) % 100;
   d = date % 100;
 }
 
-int from_ymd(int y, int m, int d) { return y * 10000 + m * 100 + d; }
+static int from_ymd(int y, int m, int d) { return y * 10000 + m * 100 + d; }
 
-int add_days(int date, int delta) {
+static int add_days(int date, int delta) {
   std::tm t{};
   int y, m, d;
   to_ymd(date, y, m, d);
@@ -32,47 +30,46 @@ int add_days(int date, int delta) {
   return from_ymd(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
 }
 
-} // namespace date
-
 // ---------- Utilities ----------
 static std::mt19937 rng(std::random_device{}());
 
-int rand_int(int min, int max) {
+static int rand_int(int min, int max) {
   std::uniform_int_distribution<int> dist(min, max);
   return dist(rng);
 }
 
 template <typename T, size_t N>
-const T &rand_from(const std::array<T, N> &arr) {
+static const T &rand_from(const std::array<T, N> &arr) {
   return arr[rand_int(0, N - 1)];
 }
 
-void copy_str(char *dest, const std::string &src, size_t maxSize) {
+static void copy_str(char *dest, const std::string &src, size_t maxSize) {
   std::strncpy(dest, src.c_str(), maxSize - 1);
   dest[maxSize - 1] = '\0';
 }
 
 // ---------- Dummy Data Pools ----------
-const std::vector<std::string> FIRST_NAMES = {
-    "Ahmad", "John", "Nig", "Ai", "Rem", "Alya", "Li", "Jason", "Zaza", "Johnny", "Rudy"};
+static const std::vector<std::string> FIRST_NAMES = {
+    "Aiman", "John",  "Nig",  "Ai",     "Rem", "Alya",
+    "Li",    "Jason", "Zaza", "Johnny", "Rudy"};
 
-const std::vector<std::string> LAST_NAMES = {"Fo",     "Lee",  "Tan",    "Lim",
-                                             "Rahman", "Wong", "Ismail", "Ng",
-                                             "Kumar",  "Ong", "Suzan", "Greyrat"};
+static const std::vector<std::string> LAST_NAMES = {
+    "Fo",     "Lee", "Tan",   "Lim", "Rahman", "Wong",
+    "Ismail", "Ng",  "Kumar", "Ong", "Suzan",  "Greyrat"};
 
-const std::vector<std::string> VEH_MODELS = {"Myvi", "Civic", "Axia", "Vios",
-                                             "Saga", "Subaru"};
+static const std::vector<std::string> VEH_MODELS = 
+{"Myvi", "Civic", "Axia",  "Vios", "Saga",  "Subaru"};
 
 // ---------- Generators ----------
 
-int generate_student_id() { return 2000000 + rand_int(0, 999999); }
+static int generate_student_id() { return 2000000 + rand_int(0, 999999); }
 
-std::string generate_name() {
+static std::string generate_name() {
   return FIRST_NAMES[rand_int(0, FIRST_NAMES.size() - 1)] + " " +
          LAST_NAMES[rand_int(0, LAST_NAMES.size() - 1)];
 }
 
-std::string generate_phone() {
+static std::string generate_phone() {
   return "01" + std::to_string(rand_int(10000000, 99999999));
 }
 
@@ -126,11 +123,11 @@ void seed_database(int count = 100) {
     int today = date::current();
 
     // submission within last 90 days
-    app.submissionDate = date::add_days(today, -rand_int(0, 90));
+    app.submissionDate = add_days(today, -rand_int(0, 90));
 
     if (rand_int(0, 1)) {
       // CLOSED
-      app.closedDate = date::add_days(app.submissionDate, rand_int(1, 30));
+      app.closedDate = add_days(app.submissionDate, rand_int(1, 30));
       app.status = static_cast<eApplicationStatus>(
           rand_int(0, 1)); // Completed / Rejected
     } else {
@@ -165,10 +162,10 @@ void seed_database(int count = 100) {
     int today = date::current();
 
     // issue date within last 120 days
-    pass.issueDate = date::add_days(today, -rand_int(0, 120));
+    pass.issueDate = add_days(today, -rand_int(0, 120));
 
     // compute expiry
-    int expiryDate = date::add_days(pass.issueDate, pass.duration);
+    int expiryDate = add_days(pass.issueDate, pass.duration);
 
     // derive status from real validity
     if (expiryDate < today) {
@@ -180,31 +177,29 @@ void seed_database(int count = 100) {
   }
 
   // ---- VEHICLES ----
-for (int i = 0; i < count; ++i) {
-  if (userIds.empty()) break;
+  for (int i = 0; i < count; ++i) {
+    if (userIds.empty())
+      break;
 
-  Vehicle v{};
+    Vehicle v{};
 
-  v.id = db_get_next_id<Vehicle>();
-  v.userid = userIds[rand_int(0, userIds.size() - 1)];
+    v.id = db_get_next_id<Vehicle>();
+    v.userid = userIds[rand_int(0, userIds.size() - 1)];
 
-  // model
-  copy_str(v.model, VEH_MODELS[rand_int(0, VEH_MODELS.size() - 1)], sizeof(v.model));
+    // model
+    copy_str(v.model, VEH_MODELS[rand_int(0, VEH_MODELS.size() - 1)],
+             sizeof(v.model));
 
-  std::unordered_set<std::string> usedPlates;
-  // unique-ish plate
-  std::string plate;
-  do {
-    plate = generate_plate();
-  } while (usedPlates.count(plate));
+    std::unordered_set<std::string> usedPlates;
+    // unique-ish plate
+    std::string plate;
+    do {
+      plate = generate_plate();
+    } while (usedPlates.count(plate));
 
-  usedPlates.insert(plate);
-  copy_str(v.plate, plate, sizeof(v.plate));
+    usedPlates.insert(plate);
+    copy_str(v.plate, plate, sizeof(v.plate));
 
-  db_add_record(v);
-}
-}
-
-int main(){
-  seed_database();
+    db_add_record(v);
+  }
 }

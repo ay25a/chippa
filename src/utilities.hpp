@@ -19,11 +19,16 @@ namespace date {
   /// @brief Returns the current date as integer
   static int current() {
     std::time_t t = std::time(nullptr);
-    std::tm* now = std::localtime(&t);
+    std::tm now;
+#ifdef _WIN32
+    localtime_s(&now, &t);
+#else
+    localtime_r(&t, &now);
+#endif
 
-    int year  = now->tm_year + 1900;
-    int month = now->tm_mon + 1;
-    int day   = now->tm_mday;
+    int year  = now.tm_year + 1900;
+    int month = now.tm_mon + 1;
+    int day   = now.tm_mday;
 
     return year * 10000 + month * 100 + day;
   }
