@@ -44,7 +44,7 @@ static const T &rand_from(const std::array<T, N> &arr) {
 }
 
 static void copy_str(char *dest, const std::string &src, size_t maxSize) {
-  std::strncpy(dest, src.c_str(), maxSize - 1);
+  memcpy(dest, src.c_str(), maxSize - 1);
   dest[maxSize - 1] = '\0';
 }
 
