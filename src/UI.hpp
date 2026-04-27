@@ -1,5 +1,14 @@
 /// @file UI.hpp
-/// @brief Contains all UI elements and Pages
+/// @brief Combines all project modules into a single functional user 
+/// interface, including authentication, parking passes and pass applications functionalities. 
+///
+/// Furthermore, it contains three main categories: 
+/// - Authentication: Includes logging in and registration of new users. 
+/// - Staff pages: Includes viewing and editing staff’s own profile, viewing students, 
+///   viewing applications and passes, approving applications, suspending students, 
+///   and generating analytical reports. 
+/// - Student pages: Includes viewing and editing student’s own profile, viewing student’s own 
+///   applications and passes, adding and removing vehicles, and applying for new parking passes.  
 #pragma once
 
 #include "cli_core.hpp"
@@ -48,6 +57,8 @@ extern void EditProfilePage();
 
 extern ePageState StudentsPage();
 
+
+/// @brief Generats a report based on a time interval and faculty
 extern void GenerateReport();
 
 // =============================================================================

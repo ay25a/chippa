@@ -1,37 +1,21 @@
 /// @file database.hpp
-/// @brief Simple file-based storage for fixed-size byte records.
+/// @brief a Simple database system that stores structures as a byte sequence in a binary file.
 ///
-/// OVERVIEW:
-/// This module is a simple database system that stores structs as a byte
-/// sequence in a file.
+/// DESIGN PRINCIPLES:
+/// - Functions are generic for all record types with shared key attributes, 
+///   and the record type is represented as “ENTITY_TYPE”. 
+/// - Records are stored and read from a file path that is specified by “ENTITY_TYPE::FILE”. 
+/// - Records are a fixed size byte sequence, with the full size to be equal to “sizeof(ENTITY_TYPE)”. 
+/// - Records are always sorted in the file by an “id” in ascending order. 
+/// - Operations load the file into memory, do operations, then write the modified memory back into the file. 
+/// - Records are read once from the file then cached into a local static dynamic array to avoid 
+///   file input-output bandwidth. 
 ///
-/// KEY DESIGN PRINCIPLES:
-/// - Entries are stored and read from a file path that is specified by
-/// `ENTITY_TYPE::FILE`.
-/// - Records are a fixed-size byte sequence, with the size being
-/// `sizeof(ENTITY_TYPE)`.
-/// - Records in the file are always sorted by an integer `id` in ascending
-/// order.
-/// - Operations load the file into memory a `vector`, do functionality, then
-/// write back the
-///   modified `vector` into the file.
-///
-/// `ENTITY_TYPE` REQUIREMENTS:
-/// - `ENTITY_TYPE` should be a struct or class with an integer `id` for sorting
-/// and searching,
-///   a static string (or const char*) with a file path (ideally `constexpr`),
-///   and a `match` member method that takes an `ENTITY_TYPE` as a parameter,
-///   and returns a boolean.
-///
-/// IMPORTANT NOTES:
-/// - File corruption handling, and more ideal storage haven't been added to
-/// keep the assignment simple.
-/// - `std::lower_bound` is used to perform a binary search, returning an
-/// iterator to the first found element,
-///   or an iterator to the location where it should've been if it isn't found.
-/// - `template` are used to avoid wasting time and memory writing functions
-/// with exact functionality for
-///   different records. (and new records can be easily added if needed)
+/// DESIGN NOTES: 
+/// - File corruption handling and detection hadn’t been implemented to keep the code simple enough. 
+/// - “std::lower_bound” standard library function is used to perform binary search, 
+///   mainly because it is better optimized, and writing a binary search function would increase the code size unnecessarily. 
+/// - The C++ “template” feature has been used to avoid duplicating the logic between different records. 
 #pragma once
 
 #include <algorithm>

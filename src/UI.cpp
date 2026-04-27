@@ -504,111 +504,127 @@ ePageState StudentsPage() {
   return ePageState::Exit;
 }
 
-void GenerateReport() {
-  enum class eReportType { Total, Annual, Monthly };
-
-  const vector<string> menu{ "Total Report", "Annual Report", "Monthly Report" };
+enum class eReportType { Total = 0, Annual, Monthly };
+static void GetReportFilters(eReportType& type, std::string& faculty){
   cli_clear();
-  cli_header("Select Report Type");
-  eReportType reportType = static_cast<eReportType>(cli_menu(menu));
+  cli_subheader("Select Report Type");
+  type = static_cast<eReportType>(cli_menu({"Total Report", "Annual Report", "Monthly Report"}));
 
-  // --- Date context ---
-  int currentDate = date::current();
-  int currentYear = currentDate / 10000;
-  int currentMonth = (currentDate / 100) % 100;
+  vector<string> facultyMenu{C_FACULTIES.begin(), C_FACULTIES.end()};
+  facultyMenu.emplace_back("All Faculties");
 
-  auto dateFilter = [&](int d) {
-    if (reportType == eReportType::Total) return true;
-    int y = d / 10000;
-    int m = (d / 100) % 100;
-    if (reportType == eReportType::Annual) return y == currentYear;
-    return (y == currentYear && m == currentMonth);
+  cli_subheader("Filter by Faculty");
+  int choice = cli_menu(facultyMenu);
+
+  if(choice < C_FACULTIES.size())
+    faculty = C_FACULTIES[choice];
+}
+
+void GenerateReport() {
+  // Get Filters
+  eReportType repType = eReportType::Total;
+  std::string faculty;
+  GetReportFilters(repType, faculty);
+
+  int now = date::current();
+  int year = now / 10000;
+  int month = (now / 100) % 100;
+
+  const auto dateFilter = [&](int date) {
+    switch (repType) {
+    case eReportType::Total: return true;
+    case eReportType::Annual: return (date / 10000) == year;
+    case eReportType::Monthly: return (((date / 10000) == year)) && ((date / 100) % 100 == month);
+    }
+  };
+
+  const auto userMatchesFaculty = [&](int userId) {
+    if (faculty.empty()) return true;
+    User u{};
+    return db_find_by_id<User>(userId, &u) && u.faculty == faculty;
   };
 
   // --- Fetch filtered datasets ---
   auto passes = db_find<ParkingPass>([&](const ParkingPass& p) {
-    return dateFilter(p.issueDate);
+    return dateFilter(p.issueDate) && userMatchesFaculty(p.userid);
   });
 
   auto apps = db_find<ParkingApplication>([&](const ParkingApplication& a) {
-    return dateFilter(a.submissionDate);
+    return dateFilter(a.submissionDate) && userMatchesFaculty(a.userid);
   });
 
   // --- Aggregation ---
-  size_t totalPasses = passes.size();
-  size_t totalActivePasses = 0;
-  size_t totalExpiredPasses = 0;
+  size_t active = 0, expired = 0;
+  size_t approved = 0, rejected = 0;
 
-  size_t approvedApplications = 0;
-  size_t rejectedApplications = 0;
-
-  std::map<int, std::vector<ParkingPass>> userPasses;
+  std::map<int, vector<ParkingPass>> userPasses;
 
   for (const auto& p : passes) {
-    totalActivePasses += (p.status == ePassStatus::Active);
-    totalExpiredPasses += (p.status == ePassStatus::Expired);
+    active  += (p.status == ePassStatus::Active);
+    expired += (p.status == ePassStatus::Expired);
     userPasses[p.userid].push_back(p);
   }
 
   for (const auto& a : apps) {
-    approvedApplications += (a.status == eApplicationStatus::Completed);
-    rejectedApplications += (a.status == eApplicationStatus::Rejected);
+    approved += (a.status == eApplicationStatus::Completed);
+    rejected += (a.status == eApplicationStatus::Rejected);
   }
 
-  // --- Renewal + Interval ---
-  size_t totalRenewedPasses = 0;
+  // --- Renewal + interval ---
+  size_t renewals = 0, count = 0;
   double totalInterval = 0.0;
-  size_t intervalCount = 0;
 
-  for (auto& up : userPasses) {
-    if (up.second.size() <= 1) continue;
+  for (auto& p : userPasses) {
+    auto& vec = p.second;
+    if (vec.size() <= 1) continue;
 
-    std::sort(up.second.begin(), up.second.end(),
-      [](const ParkingPass& a, const ParkingPass& b) {
+    std::sort(vec.begin(), vec.end(),
+      [](const auto& a, const auto& b) {
         return a.issueDate < b.issueDate;
       });
 
-    totalRenewedPasses += up.second.size() - 1;
+    renewals += vec.size() - 1;
 
-    for (size_t i = 1; i < up.second.size(); ++i) {
-      totalInterval += date::days_between(up.second[i - 1].issueDate, up.second[i].issueDate);
-      intervalCount++;
+    for (size_t i = 1; i < vec.size(); ++i) {
+      totalInterval += date::days_between(vec[i - 1].issueDate, vec[i].issueDate);
+      count++;
     }
   }
 
-  double avgRenewalInterval =
-    intervalCount ? (totalInterval / intervalCount) : 0.0;
+  double avgInterval = count ? totalInterval / count : 0.0;
 
   // --- Utilization ---
-  size_t usersWithPass = userPasses.size();
-  size_t totalVehicles = db_get_records<Vehicle>().size();
+  size_t users = userPasses.size();
+  size_t vehicles = db_get_records<Vehicle>().size();
+  double utilization = users ? (double)vehicles / users : 0.0;
 
-  double avgUtilization =
-    usersWithPass ? static_cast<double>(totalVehicles) / usersWithPass : 0.0;
-
-  // --- Display ---
+  // --- Header ---
   cli_clear();
   string header = "Parking System Report";
 
-  if (reportType == eReportType::Annual)
-    header += " (Annual - " + std::to_string(currentYear) + ")";
-  else if (reportType == eReportType::Monthly)
-    header += " (Monthly - " + std::to_string(currentYear) + "-" +
-              (currentMonth < 10 ? "0" : "") + std::to_string(currentMonth) + ")";
+  if (repType == eReportType::Annual)
+    header += " (Annual - " + std::to_string(year) + ")";
+  else if (repType == eReportType::Monthly)
+    header += " (Monthly - " + std::to_string(year) + "-" +
+              (month < 10 ? "0" : "") + std::to_string(month) + ")";
+
+  if (!faculty.empty())
+    header += " [" + faculty + "]";
 
   cli_header(header);
 
-  cli_field("Total number of passes", totalPasses);
-  cli_field("Total number of active passes", totalActivePasses);
-  cli_field("Total number of expired passes", totalExpiredPasses);
-  cli_field("Total number of renewed parking passes", totalRenewedPasses);
-  cli_field("Average renewal interval (days)", avgRenewalInterval);
+  // --- Output ---
+  cli_field("Total passes", passes.size());
+  cli_field("Active passes", active);
+  cli_field("Expired passes", expired);
+  cli_field("Renewed passes", renewals);
+  cli_field("Avg renewal interval (days)", avgInterval);
 
   cli_field("Total applications", apps.size());
-  cli_field("Approved applications", approvedApplications);
-  cli_field("Rejected applications", rejectedApplications);
+  cli_field("Approved applications", approved);
+  cli_field("Rejected applications", rejected);
 
-  cli_field("Average car utilization (vehicles per user)", avgUtilization);
+  cli_field("Avg car utilization", utilization);
 
   cli_press_enter();
 }

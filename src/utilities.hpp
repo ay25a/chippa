@@ -1,5 +1,6 @@
 /// @file utilities.hpp
-/// @brief Contains useful utilities for Entities, Date, and UI
+/// @brief a Basic module that contains all reusable utilities, 
+/// including UI functions and objects, Enum conversion, and date related utilities. 
 #pragma once
 
 #include "entities.hpp"

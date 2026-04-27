@@ -1,5 +1,6 @@
 /// @file cli_core.hpp
-/// @brief Defines the main command line elements to be used in the UI
+/// @brief a Basic straight-forward module that defines the main building blocks for the UI elements, 
+/// as well as a formatter. 
 #pragma once
 
 #include "utilities.hpp"
